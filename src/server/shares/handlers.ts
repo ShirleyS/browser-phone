@@ -86,7 +86,7 @@ function protectedHandler<A extends unknown[]>(
 export const createShare = protectedHandler(async (request: Request, id: string) => {
   const l = await owner(request, id);
   if ("res" in l) return l.res;
-  if (!liveCapability().enabled)
+  if (!(await liveCapability()).enabled)
     return apiError(
       503,
       "egress_not_enforced",
@@ -157,7 +157,7 @@ export const createSharedSession = protectedHandler(async (request: Request, id:
   const l = await tester(request, id);
   if ("res" in l) return l.res;
   const cfg = getConfig();
-  if (!liveCapability(cfg).enabled)
+  if (!(await liveCapability(cfg)).enabled)
     return apiError(
       503,
       "egress_not_enforced",

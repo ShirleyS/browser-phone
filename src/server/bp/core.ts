@@ -3,6 +3,7 @@
 import { assertPublicWebhook, type Resolver } from "@/lib/shared/net";
 import { boundedText, BodyLimitError } from '@/lib/shared/body';
 import { pinnedOutbound } from './outbound';
+import { fetchThroughPinnedRelay, getRelayCapability } from './pinned-relay';
 
 export function getConfig() {
   const n = (k: string, d: number) => {
@@ -19,6 +20,7 @@ export function getConfig() {
     webhookTimeoutMs: n("BP_WEBHOOK_TIMEOUT_MS", 8000),
     maxBodyBytes: Math.min(n("BP_MAX_BODY_BYTES", 16384), 16384),
     publicOnlyEgress: process.env['BP_PUBLIC_ONLY_EGRESS'] === 'enforced',
+    pinnedRelayOrigin: process.env['BP_PINNED_RELAY_ORIGIN'] || '',
     allowInsecureWebhooks: process.env["BP_ALLOW_INSECURE_WEBHOOKS"] === "true",
     dnsResolverUrl: process.env["BP_DNS_RESOLVER_URL"] || "https://cloudflare-dns.com/dns-query",
     publicBaseUrl: process.env["BP_PUBLIC_BASE_URL"] || "",
@@ -26,9 +28,10 @@ export function getConfig() {
 }
 export type BpConfig = ReturnType<typeof getConfig>;
 
-export function liveCapability(cfg = getConfig()) {
+export async function liveCapability(cfg = getConfig()) {
   const pinned = pinnedOutbound();
-  return { enabled: !!pinned || cfg.publicOnlyEgress, transport: pinned ? 'node-pinned' : cfg.publicOnlyEgress ? 'enforced-egress' : 'disabled', prerequisite: 'Verified public-only egress at connection time, or the checked-address-pinned Node startup' };
+  const relay=!pinned&&!cfg.publicOnlyEgress&&cfg.pinnedRelayOrigin?await getRelayCapability(cfg.pinnedRelayOrigin):null;
+  return { enabled: !!pinned || cfg.publicOnlyEgress || !!relay, transport: pinned ? 'node-pinned' : cfg.publicOnlyEgress ? 'enforced-egress' : relay?'node-pinned-relay':'disabled', prerequisite: 'Verified public-only egress, checked-address-pinned Node startup, or a verified pinned relay' };
 }
 export function webhookResolver(cfg: BpConfig): Resolver { return pinnedOutbound()?.resolve ?? dohResolver(cfg); }
 
@@ -145,7 +148,7 @@ export async function deliverWebhook(cfg: BpConfig, url: string, secret: string,
   const start = Date.now();
   // DNS preflight is not coupled to fetch's resolver. Only an independently
   // enforced public-only egress boundary makes delivery safe on this runtime.
-  if (!liveCapability(cfg).enabled) return { ok: false, status: null, latency_ms: 0, error: 'egress_not_enforced', body: null };
+  if (!(await liveCapability(cfg)).enabled) return { ok: false, status: null, latency_ms: 0, error: 'egress_not_enforced', body: null };
   const check = await assertPublicWebhook(url, webhookResolver(cfg), { allowInsecure: false });
   if (!check.ok) return { ok: false, status: null, latency_ms: Date.now() - start, error: `blocked_target:${check.reason}`, body: null };
   const body = JSON.stringify(payload);
@@ -154,7 +157,7 @@ export async function deliverWebhook(cfg: BpConfig, url: string, secret: string,
   try {
     const headers = { 'Content-Type': 'application/json', 'User-Agent': 'BrowserPhone-Webhook/1.0', 'X-BrowserPhone-Event': eventType, 'X-BrowserPhone-Signature': `t=${t},v1=${sig}` };
     const pinned = pinnedOutbound();
-    const r = pinned ? await pinned.fetch(check.url.toString(), { headers, body, timeoutMs: cfg.webhookTimeoutMs }) : await fetch(check.url.toString(), {
+    const r = pinned ? await pinned.fetch(check.url.toString(), { headers, body, timeoutMs: cfg.webhookTimeoutMs }) : !cfg.publicOnlyEgress&&cfg.pinnedRelayOrigin ? await fetchThroughPinnedRelay(cfg.pinnedRelayOrigin,check.url.toString(),{headers,body,timeoutMs:cfg.webhookTimeoutMs}) : await fetch(check.url.toString(), {
       method: "POST",
       redirect: "manual",
       headers: {

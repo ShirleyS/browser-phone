@@ -4,6 +4,7 @@ import { z } from "zod";
 import { assertPublicWebhook } from "@/lib/shared/net";
 import { validVoiceConfig } from '@/lib/voice/validate';
 import { inboxPage } from './inbox-page';
+import { relayTargetAllowed } from './pinned-relay';
 import { createShareStore, type SharesDatabase } from '@/server/shares/store';
 import {
   admin, apiBase, apiError, bearer, deliverWebhook, dohResolver, getConfig, json, pairingCode,
@@ -51,13 +52,14 @@ async function loadSession(request: Request, id: string, which: "phone" | "callb
 // POST /v1/connections
 export async function createConnection(request: Request) {
   const cfg = getConfig();
-  if (!liveCapability(cfg).enabled) return apiError(503, 'egress_not_enforced', 'Live webhooks require an enforced public-only egress boundary or pinned Node startup');
+  if (!(await liveCapability(cfg)).enabled) return apiError(503, 'egress_not_enforced', 'Live webhooks require verified outbound delivery');
   const body = await readJson(request, cfg.maxBodyBytes);
   if (!body.ok) return body.res;
   const p = z.object({ webhook_url: z.string().max(2048) }).safeParse(body.data);
   if (!p.success) return apiError(400, "invalid_request", "webhook_url is required");
   const check = await assertPublicWebhook(p.data.webhook_url, webhookResolver(cfg));
   if (!check.ok) return apiError(422, "invalid_webhook_url", `Webhook URL rejected: ${check.reason}`, { reason: check.reason });
+  if((await liveCapability(cfg)).transport==='node-pinned-relay'&&!await relayTargetAllowed(cfg.pinnedRelayOrigin,check.url.toString()))return apiError(422,'invalid_webhook_url','Webhook origin is not approved by the pinned relay');
   const db = await admin();
   const { data: allowed } = await db.rpc("bp_bump_usage", { _fp: check.fingerprint, _kind: "pairing", _limit: cfg.dailyPairingLimit });
   if (!allowed) return quota429("Too many pairing attempts for this webhook today");

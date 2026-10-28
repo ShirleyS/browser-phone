@@ -6,7 +6,7 @@ export const Route = createFileRoute("/api/public/v1/connections")({
   server: {
     handlers: {
       OPTIONS: () => preflight(),
-      GET: () => json(liveCapability()),
+      GET: async () => json(await liveCapability()),
       POST: ({ request }) => createConnection(request),
     },
   },
