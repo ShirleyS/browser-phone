@@ -1,13 +1,15 @@
 # Browser Phone Node self-host
 
-This is a concrete Node deployment target, not the Lovable Worker target. No signup is added. No infrastructure purchase is needed to read/run the source; hosting, database and provider charges remain yours.
+This is a concrete Node deployment target, not the Lovable Worker target. Core use and shared testing need no signup; saved-setup login is optional. No infrastructure purchase is needed to read/run the source; hosting, database and provider charges remain yours.
 
 ## Prerequisites
 
 - Node 22.12+ and npm; use `npm ci` with included lockfile.
-- Your own empty PostgreSQL/Supabase-compatible deployment with service-role API access. Apply the five files `drizzle/migrations/0000` through `0004` **in journal order** using your database administrator/migration tooling. Use a clean isolated database for migration-from-zero verification. This Lovable project does not expose its managed service key to users; do not ask for it or extract it.
+- Your own empty PostgreSQL/Supabase-compatible deployment with service-role API access. Apply all seven migration files `drizzle/migrations/0000` through `0006` **in journal order** using your database administrator/migration tooling. Use a clean isolated database for migration-from-zero verification. This Lovable project does not expose its managed service key to users; do not ask for it or extract it.
 - Set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, publishable/browser variables as needed, and `BP_PUBLIC_BASE_URL=https://phone.your-domain.example` using a secret manager. Build-time browser settings must target your own database. Never commit `.env` values. `BP_PUBLIC_ONLY_EGRESS` stays unset: pinned delivery does not need that attestation.
 - Public HTTPS reverse proxy to localhost:3000. Call/mic UI requires HTTPS in browsers (localhost exception). Reverse proxy should also cap inbound bodies at 16 KB. Do not disable TLS certificate checks.
+
+Migration `0005` adds the optional saved-setup tables, and `0006` adds shared test links. Apply all migrations in journal order for this source version; session handlers expect the sharing schema. Login remains unavailable until its provider settings are configured. See [optional login](../../docs/MOJOAUTH.md) and [sharing](../../docs/SHARING.md).
 
 ## Build and run
 
