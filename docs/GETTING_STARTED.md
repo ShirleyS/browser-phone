@@ -15,17 +15,6 @@ npm run demo
 
 Open the address printed in your terminal. Send a message, try the Scenarios tab, and answer a simulated incoming call. These features require no database, provider credentials or signup.
 
-While the saved-setup and sharing additions are awaiting merge in [PR #1](https://github.com/ShirleyS/browser-phone/pull/1), use its feature branch to try them:
-
-```sh
-git fetch origin codex/optional-mojoauth
-git switch --track origin/codex/optional-mojoauth
-npm ci
-npm run demo
-```
-
-These branch-selection commands assume a fresh clone with no local edits.
-
 ## 2. Choose a real integration
 
 | What you want to test | What you need |

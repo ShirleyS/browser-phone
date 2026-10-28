@@ -19,7 +19,7 @@ npm run demo
 
 Open the local address printed in the terminal. You can send simulated messages, answer simulated calls and run scenarios without a database or a voice-provider account.
 
-**Status:** the source runs locally. A current public hosted demo has not been verified. The saved-setup and sharing additions are in [PR #1](https://github.com/ShirleyS/browser-phone/pull/1) until merged; use that branch to try those additions. The local demo alone does not activate real webhooks or voice.
+**Status:** the source runs locally. A current public hosted demo has not been verified. Saved setups, sharing and the caller-side integration bridge are included in this source version. The local demo alone does not activate real webhooks or voice.
 
 ## Connect your app
 
