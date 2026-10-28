@@ -36,6 +36,11 @@
         "in": "cookie",
         "name": "__Host-bp_session",
         "description": "Opaque HttpOnly host-only SameSite=Lax Secure cookie; bp_session on HTTP localhost. Seven-day expiry. Account routes have no cross-origin CORS access. Not an OIDC token."
+      },
+      "shareToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "bp_share_ capability returned once to the verified owner. Only reads this shared phone and creates isolated tester sessions under its lifetime call allowance. Cannot manage owner connections or other inboxes. Hash-only server storage. Expires/revokes with link or connection. URL fragment only for initial link; API token goes in Authorization header."
       }
     },
     "schemas": {
@@ -220,6 +225,158 @@
           "settings",
           "connection",
           "needs_pairing"
+        ]
+      },
+      "ShareSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "call_limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "calls_used": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "revoked_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "call_limit",
+          "calls_used",
+          "expires_at",
+          "revoked_at",
+          "created_at"
+        ]
+      },
+      "SharedPhoneSettings": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "contact": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "number": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              }
+            },
+            "required": [
+              "name",
+              "number"
+            ]
+          },
+          "lang": {
+            "enum": [
+              "en",
+              "es"
+            ]
+          }
+        },
+        "required": [
+          "contact",
+          "lang"
+        ]
+      },
+      "CreateShare": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/SharedPhoneSettings"
+          },
+          "call_limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "expires_in_hours": {
+            "type": "integer",
+            "enum": [
+              1,
+              24,
+              168
+            ]
+          }
+        },
+        "required": [
+          "settings",
+          "call_limit",
+          "expires_in_hours"
+        ]
+      },
+      "SharedPhone": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/SharedPhoneSettings"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "usage": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "used": {
+                "type": "integer"
+              },
+              "limit": {
+                "type": "integer"
+              },
+              "remaining": {
+                "type": "integer"
+              },
+              "reset_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "verified": {
+                "const": true
+              }
+            },
+            "required": [
+              "used",
+              "limit",
+              "remaining",
+              "reset_at",
+              "verified"
+            ]
+          }
+        },
+        "required": [
+          "settings",
+          "expires_at",
+          "usage"
         ]
       }
     },
@@ -1495,6 +1652,446 @@
           }
         },
         "description": "Same-origin only; no CORS. Cache-Control: no-store. Does not revoke the active webhook connection."
+      }
+    },
+    "/connections/{id}/shares": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "summary": "List shared test-link metadata for this owned connection",
+        "tags": [
+          "Shared test phones"
+        ],
+        "security": [
+          {
+            "connectionToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "shares": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ShareSummary"
+                      }
+                    }
+                  },
+                  "required": [
+                    "shares"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "410": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a shared test phone with one/few/custom call attempts",
+        "tags": [
+          "Shared test phones"
+        ],
+        "security": [
+          {
+            "connectionToken": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "share": {
+                      "$ref": "#/components/schemas/ShareSummary"
+                    },
+                    "token": {
+                      "type": "string",
+                      "pattern": "^bp_share_[A-Za-z0-9_-]{43}$"
+                    }
+                  },
+                  "required": [
+                    "share",
+                    "token"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "410": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "413": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateShare"
+              }
+            }
+          }
+        },
+        "description": "Verified, current owner capability required. Maximum20 active links/connection. Expiry capped by connection expiry. Token returned only once; listing metadata never contains it. No permanent owner/provider secrets exposed. Call allowance is additional to daily webhook/concurrency/duration quotas. UI presets1,3,5/custom."
+      }
+    },
+    "/connections/{id}/shares/{shareId}/revoke": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "shareId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "summary": "Revoke this test link and deny its subsequent session operations",
+        "tags": [
+          "Shared test phones"
+        ],
+        "security": [
+          {
+            "connectionToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "revoked": {
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "revoked"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "410": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/shares/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Read shared contact and remaining total call allowance without spending a slot",
+        "tags": [
+          "Shared test phones"
+        ],
+        "security": [
+          {
+            "shareToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedPhone"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "410": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/shares/{id}/sessions": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "summary": "Reserve an isolated tester chat or call session",
+        "tags": [
+          "Shared test phones"
+        ],
+        "security": [
+          {
+            "shareToken": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "kind": {
+                      "enum": [
+                        "chat",
+                        "call"
+                      ]
+                    },
+                    "phone_token": {
+                      "type": "string"
+                    },
+                    "expires_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "call_deadline": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "idempotent_replay": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "410": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "kind": {
+                      "enum": [
+                        "chat",
+                        "call"
+                      ]
+                    },
+                    "phone_token": {
+                      "type": "string"
+                    },
+                    "expires_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "call_deadline": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "idempotent_replay": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "413": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9._:-]+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "chat",
+                      "call"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              }
+            }
+          }
+        },
+        "description": "Atomic lifetime call allowance shared by every tester, plus existing fingerprint daily/concurrency quotas through bp_create_session. A new call session counts one attempt, even if subsequent mic/provider setup fails. Opening the page and idempotent retries do not count. Chat does not decrement call allowance. Exhausted call returns429 share_exhausted. Session/credential bounds never exceed link/connection expiry. Kind-changing or ended/expired idempotent replay is rejected. Revoke/expiry denies events/inbox/callbacks. Shared call.start is normalized to one canonical leased event/session. Does not forcibly revoke previously issued provider credentials or guarantee a provider billing cap."
       }
     }
   }

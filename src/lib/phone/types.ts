@@ -51,6 +51,8 @@ export type LiveConnection = {
   verified: boolean;
   // secrets – memory/sessionStorage only, never exported
   phoneToken: string;
+  // A tester capability can create only sessions under this shared link.
+  shareId?: string | undefined;
   signingSecret?: string | undefined;
 };
 

@@ -2,7 +2,7 @@
 
 const SECRET_KEYS = /^(authorization|callback_token|phone_token|token|signing_secret|secret|signed_url|conversation_token|api[_-]?key|xi-api-key|password|code|pairing_code|access_token)$/i;
 const TOKEN_PATTERNS: RegExp[] = [
-  /bp_(?:phone|cb|conn|sess)_[A-Za-z0-9_-]{8,}/g,
+  /bp_(?:phone|cb|conn|sess|share)_[A-Za-z0-9_-]{8,}/g,
   /whsec_[A-Za-z0-9_-]{8,}/g,
   /Bearer\s+[A-Za-z0-9._~+/=-]{8,}/gi,
   /sk_[A-Za-z0-9]{16,}/g,

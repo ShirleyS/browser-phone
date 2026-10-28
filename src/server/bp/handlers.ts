@@ -1,8 +1,10 @@
 import type { Json } from "@/integrations/supabase/types";
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from "zod";
 import { assertPublicWebhook } from "@/lib/shared/net";
 import { validVoiceConfig } from '@/lib/voice/validate';
 import { inboxPage } from './inbox-page';
+import { createShareStore, type SharesDatabase } from '@/server/shares/store';
 import {
   admin, apiBase, apiError, bearer, deliverWebhook, dohResolver, getConfig, json, pairingCode,
   randomToken, readJson, safeEqual, sha256Hex, liveCapability, webhookResolver,
@@ -28,12 +30,20 @@ async function loadSession(request: Request, id: string, which: "phone" | "callb
   if (!uuid.safeParse(id).success) return { res: apiError(404, "not_found", "Session not found") } as const;
   const tok = bearer(request);
   if (!tok) return { res: apiError(401, "unauthorized", "Missing bearer token") } as const;
-  const db = await admin();
-  const { data } = await db.from("bp_sessions").select("*, bp_connections(webhook_url, signing_secret, fingerprint, revoked_at)").eq("id", id).maybeSingle();
+  const db = await admin() as unknown as SupabaseClient<SharesDatabase>;
+  // Explicitly select the binding so a missing migration fails closed.
+  const { data } = await db.from("bp_sessions").select("*, share_id, bp_connections(webhook_url, signing_secret, fingerprint, revoked_at, token_expires_at)").eq("id", id).maybeSingle();
   const hash = await sha256Hex(tok);
   const expected = data ? (which === "phone" ? data.phone_token_hash : data.callback_token_hash) : "";
   if (!data || !safeEqual(expected, hash)) return { res: apiError(401, "unauthorized", "Invalid token for this session") } as const;
   if ((data.bp_connections as { revoked_at: string | null } | null)?.revoked_at) return { res: apiError(401, "token_revoked", "Connection was revoked") } as const;
+  const shareId = data.share_id;
+  if (shareId) {
+    const share = await (await createShareStore()).share(shareId);
+    const conn = data.bp_connections as { token_expires_at: string } | null;
+    if (!share || share.connection_id !== data.connection_id || share.revoked_at || new Date(share.expires_at).getTime() <= Date.now() || !conn || new Date(conn.token_expires_at).getTime() <= Date.now())
+      return { res: apiError(410, 'share_unavailable', 'This test phone is expired or revoked') } as const;
+  }
   if (new Date(data.expires_at).getTime() < Date.now()) return { res: apiError(410, "session_expired", "Session expired") } as const;
   return { db, sess: data } as const;
 }
@@ -175,7 +185,11 @@ export async function postEvent(request: Request, id: string) {
   const p = z.object({ id: extId, type: z.enum(["call.start", "call.end", "message.sent"]), text: z.string().max(4000).optional() }).safeParse(body.data);
   if (!p.success) return apiError(400, "invalid_request", "Event needs id, type (call.start|call.end|message.sent)");
   const { db, sess } = l;
-  const ev = p.data;
+  // A share reserves one call attempt per call session. Arbitrary event IDs or
+  // text must never let that reservation mint multiple voice credentials.
+  const ev: typeof p.data = sess.share_id && p.data.type === 'call.start'
+    ? { id: `call.start:${id}`, type: 'call.start' as const }
+    : p.data;
   if (sess.status !== "active" && ev.type !== "call.end") return apiError(409, "session_ended", "Session already ended");
   if (ev.type.startsWith("call.") && sess.kind !== "call") return apiError(409, "wrong_session_kind", "Call events need a call session");
   if (ev.type === "message.sent" && !ev.text) return apiError(400, "invalid_request", "message.sent requires text");

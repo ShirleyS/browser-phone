@@ -18,12 +18,13 @@ function createEngine() {
   });
 }
 
-export function usePhoneEngine() {
+export function usePhoneEngine({ isolated = false }: { isolated?: boolean } = {}) {
   const [engine] = useState(createEngine);
   const state = useSyncExternalStore(engine.subscribe, engine.getState, engine.getState);
 
   // hydrate prefs after mount (avoid SSR mismatch)
   useEffect(() => {
+    if (isolated) return () => void engine.dispose();
     try {
       const p = JSON.parse(localStorage.getItem(PREFS_KEY) || "null");
       if (p?.lang) engine.setLang(p.lang === "es" ? "es" : "en");
@@ -39,19 +40,21 @@ export function usePhoneEngine() {
       /* ignore corrupt prefs */
     }
     return () => void engine.dispose();
-  }, [engine]);
+  }, [engine, isolated]);
 
   useEffect(() => {
+    if (isolated) return;
     localStorage.setItem(PREFS_KEY, JSON.stringify({ lang: state.lang, contact: state.contact, agentId: state.agentId }));
-  }, [state.lang, state.contact, state.agentId]);
+  }, [isolated, state.lang, state.contact, state.agentId]);
 
   useEffect(() => {
+    if (isolated) return;
     if (state.connection?.connectionId) {
       // signing secret is intentionally not persisted
       const { signingSecret: _s, ...rest } = state.connection;
       sessionStorage.setItem(CONN_KEY, JSON.stringify(rest));
     } else sessionStorage.removeItem(CONN_KEY);
-  }, [state.connection]);
+  }, [isolated, state.connection]);
 
   return { engine, state };
 }

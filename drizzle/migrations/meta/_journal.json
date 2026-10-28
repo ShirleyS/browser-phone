@@ -43,6 +43,13 @@
       "when": 1793216870434,
       "tag": "0005_optional_mojoauth_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793222236428,
+      "tag": "0006_shared_test_phones",
+      "breakpoints": true
     }
   ]
 }

@@ -34,6 +34,7 @@ const en = {
   parentOrigin: "Parent origin", copy: "Copy", copied: "Copied",
   failedRetry: "Not delivered. Tap to retry.", disconnected: "Disconnected", reconnect: "Reconnect",
   micDenied: "Microphone blocked — using simulated call instead.", voiceFailed: "Voice provider failed — using simulated call.",
+  sharedVoice: { micDenied: "Microphone access was blocked. The call could not start.", voiceFailed: "The voice connection failed.", noVoice: "The owner’s webhook did not return voice setup. The call could not start." },
   quota: "Daily allowance used up", noVoice: "Your webhook did not return a voice config — simulated call.",
 };
 type Dict = typeof en;
@@ -72,6 +73,7 @@ const es: Dict = {
   parentOrigin: "Origen padre", copy: "Copiar", copied: "Copiado",
   failedRetry: "No entregado. Toca para reintentar.", disconnected: "Desconectado", reconnect: "Reconectar",
   micDenied: "Micrófono bloqueado — se usa llamada simulada.", voiceFailed: "Falló el proveedor de voz — llamada simulada.",
+  sharedVoice: { micDenied: "El acceso al micrófono está bloqueado. No se pudo iniciar la llamada.", voiceFailed: "Falló la conexión de voz.", noVoice: "El webhook no devolvió configuración de voz. No se pudo iniciar la llamada." },
   quota: "Cupo diario agotado", noVoice: "Tu webhook no devolvió configuración de voz — llamada simulada.",
 };
 
