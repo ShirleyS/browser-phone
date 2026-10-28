@@ -2,7 +2,7 @@
 
 An open-source testing phone you connect to your own app. It looks like a WhatsApp-style
 smartphone and sits next to a developer workbench (Connect, Scenarios, Inspector, Docs).
-No sign-up, no accounts. MIT licensed.
+No sign-up required. Optional MojoAuth login lets you save setups. MIT licensed.
 
 - **Offline demo**: works right away with no backend, no credentials, no AI and no cost. Messages get labeled demo replies; calls are simulated (ringing, answer, decline, mute, speaker, hang up, timer).
 - **Scenarios**: incoming call/message, delayed reply, disconnect, failed delivery, receipt and payment links (all simulated, pointing to example.com).
@@ -99,8 +99,9 @@ Implement `VoiceAdapter` in `src/lib/voice/adapter.ts` and register it in `voice
 
 ## Optional login
 
-Core features need no login. Account-based login (e.g. MojoAuth) is **not implemented**, and capability tokens + pairing stay the
-access model.
+Core features need no login. **Save my setup** adds optional MojoAuth hosted login to save and restore phone settings and an already-paired connection across devices. It never saves conversations, recordings, ElevenLabs API keys or webhook signing secrets. Saved connection capabilities are encrypted and retain their original expiry and daily quota.
+
+Login is off until the operator configures a MojoAuth OIDC application, server secrets and the account migration. Follow [docs/MOJOAUTH.md](./docs/MOJOAUTH.md). Account routes use an HttpOnly cookie and same-origin POST protection; webhook/session APIs continue to use scoped bearer tokens and pairing. Actual email delivery must be verified after deployment configuration.
 
 See also [CONTRIBUTING.md](./CONTRIBUTING.md) and [SECURITY.md](./SECURITY.md).
 

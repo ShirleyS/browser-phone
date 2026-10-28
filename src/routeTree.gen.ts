@@ -10,17 +10,29 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicV1AccountRouteImport } from './routes/api/public/v1/account'
 import { Route as ApiPublicV1ConnectionsRouteImport } from './routes/api/public/v1/connections'
+import { Route as ApiPublicV1AccountCallbackRouteImport } from './routes/api/public/v1/account.callback'
+import { Route as ApiPublicV1AccountLoginRouteImport } from './routes/api/public/v1/account.login'
+import { Route as ApiPublicV1AccountLogoutRouteImport } from './routes/api/public/v1/account.logout'
+import { Route as ApiPublicV1AccountSetupsRouteImport } from './routes/api/public/v1/account.setups'
 import { Route as ApiPublicV1ConnectionsIdRevokeRouteImport } from './routes/api/public/v1/connections.$id.revoke'
 import { Route as ApiPublicV1ConnectionsIdSessionsRouteImport } from './routes/api/public/v1/connections.$id.sessions'
 import { Route as ApiPublicV1ConnectionsIdUsageRouteImport } from './routes/api/public/v1/connections.$id.usage'
 import { Route as ApiPublicV1ConnectionsIdVerifyRouteImport } from './routes/api/public/v1/connections.$id.verify'
 import { Route as ApiPublicV1SessionsIdEventsRouteImport } from './routes/api/public/v1/sessions.$id.events'
 import { Route as ApiPublicV1SessionsIdMessagesRouteImport } from './routes/api/public/v1/sessions.$id.messages'
+import { Route as ApiPublicV1AccountSetupsIdRemoveRouteImport } from './routes/api/public/v1/account.setups.$id.remove'
+import { Route as ApiPublicV1AccountSetupsIdRestoreRouteImport } from './routes/api/public/v1/account.setups.$id.restore'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1AccountRoute = ApiPublicV1AccountRouteImport.update({
+  id: '/api/public/v1/account',
+  path: '/api/public/v1/account',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicV1ConnectionsRoute = ApiPublicV1ConnectionsRouteImport.update({
@@ -28,6 +40,29 @@ const ApiPublicV1ConnectionsRoute = ApiPublicV1ConnectionsRouteImport.update({
   path: '/api/public/v1/connections',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicV1AccountCallbackRoute =
+  ApiPublicV1AccountCallbackRouteImport.update({
+    id: '/callback',
+    path: '/callback',
+    getParentRoute: () => ApiPublicV1AccountRoute,
+  } as any)
+const ApiPublicV1AccountLoginRoute = ApiPublicV1AccountLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => ApiPublicV1AccountRoute,
+} as any)
+const ApiPublicV1AccountLogoutRoute =
+  ApiPublicV1AccountLogoutRouteImport.update({
+    id: '/logout',
+    path: '/logout',
+    getParentRoute: () => ApiPublicV1AccountRoute,
+  } as any)
+const ApiPublicV1AccountSetupsRoute =
+  ApiPublicV1AccountSetupsRouteImport.update({
+    id: '/setups',
+    path: '/setups',
+    getParentRoute: () => ApiPublicV1AccountRoute,
+  } as any)
 const ApiPublicV1ConnectionsIdRevokeRoute =
   ApiPublicV1ConnectionsIdRevokeRouteImport.update({
     id: '/$id/revoke',
@@ -64,73 +99,128 @@ const ApiPublicV1SessionsIdMessagesRoute =
     path: '/api/public/v1/sessions/$id/messages',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicV1AccountSetupsIdRemoveRoute =
+  ApiPublicV1AccountSetupsIdRemoveRouteImport.update({
+    id: '/$id/remove',
+    path: '/$id/remove',
+    getParentRoute: () => ApiPublicV1AccountSetupsRoute,
+  } as any)
+const ApiPublicV1AccountSetupsIdRestoreRoute =
+  ApiPublicV1AccountSetupsIdRestoreRouteImport.update({
+    id: '/$id/restore',
+    path: '/$id/restore',
+    getParentRoute: () => ApiPublicV1AccountSetupsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/public/v1/account': typeof ApiPublicV1AccountRouteWithChildren
   '/api/public/v1/connections': typeof ApiPublicV1ConnectionsRouteWithChildren
+  '/api/public/v1/account/callback': typeof ApiPublicV1AccountCallbackRoute
+  '/api/public/v1/account/login': typeof ApiPublicV1AccountLoginRoute
+  '/api/public/v1/account/logout': typeof ApiPublicV1AccountLogoutRoute
+  '/api/public/v1/account/setups': typeof ApiPublicV1AccountSetupsRouteWithChildren
   '/api/public/v1/connections/$id/revoke': typeof ApiPublicV1ConnectionsIdRevokeRoute
   '/api/public/v1/connections/$id/sessions': typeof ApiPublicV1ConnectionsIdSessionsRoute
   '/api/public/v1/connections/$id/usage': typeof ApiPublicV1ConnectionsIdUsageRoute
   '/api/public/v1/connections/$id/verify': typeof ApiPublicV1ConnectionsIdVerifyRoute
   '/api/public/v1/sessions/$id/events': typeof ApiPublicV1SessionsIdEventsRoute
   '/api/public/v1/sessions/$id/messages': typeof ApiPublicV1SessionsIdMessagesRoute
+  '/api/public/v1/account/setups/$id/remove': typeof ApiPublicV1AccountSetupsIdRemoveRoute
+  '/api/public/v1/account/setups/$id/restore': typeof ApiPublicV1AccountSetupsIdRestoreRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/public/v1/account': typeof ApiPublicV1AccountRouteWithChildren
   '/api/public/v1/connections': typeof ApiPublicV1ConnectionsRouteWithChildren
+  '/api/public/v1/account/callback': typeof ApiPublicV1AccountCallbackRoute
+  '/api/public/v1/account/login': typeof ApiPublicV1AccountLoginRoute
+  '/api/public/v1/account/logout': typeof ApiPublicV1AccountLogoutRoute
+  '/api/public/v1/account/setups': typeof ApiPublicV1AccountSetupsRouteWithChildren
   '/api/public/v1/connections/$id/revoke': typeof ApiPublicV1ConnectionsIdRevokeRoute
   '/api/public/v1/connections/$id/sessions': typeof ApiPublicV1ConnectionsIdSessionsRoute
   '/api/public/v1/connections/$id/usage': typeof ApiPublicV1ConnectionsIdUsageRoute
   '/api/public/v1/connections/$id/verify': typeof ApiPublicV1ConnectionsIdVerifyRoute
   '/api/public/v1/sessions/$id/events': typeof ApiPublicV1SessionsIdEventsRoute
   '/api/public/v1/sessions/$id/messages': typeof ApiPublicV1SessionsIdMessagesRoute
+  '/api/public/v1/account/setups/$id/remove': typeof ApiPublicV1AccountSetupsIdRemoveRoute
+  '/api/public/v1/account/setups/$id/restore': typeof ApiPublicV1AccountSetupsIdRestoreRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/public/v1/account': typeof ApiPublicV1AccountRouteWithChildren
   '/api/public/v1/connections': typeof ApiPublicV1ConnectionsRouteWithChildren
+  '/api/public/v1/account/callback': typeof ApiPublicV1AccountCallbackRoute
+  '/api/public/v1/account/login': typeof ApiPublicV1AccountLoginRoute
+  '/api/public/v1/account/logout': typeof ApiPublicV1AccountLogoutRoute
+  '/api/public/v1/account/setups': typeof ApiPublicV1AccountSetupsRouteWithChildren
   '/api/public/v1/connections/$id/revoke': typeof ApiPublicV1ConnectionsIdRevokeRoute
   '/api/public/v1/connections/$id/sessions': typeof ApiPublicV1ConnectionsIdSessionsRoute
   '/api/public/v1/connections/$id/usage': typeof ApiPublicV1ConnectionsIdUsageRoute
   '/api/public/v1/connections/$id/verify': typeof ApiPublicV1ConnectionsIdVerifyRoute
   '/api/public/v1/sessions/$id/events': typeof ApiPublicV1SessionsIdEventsRoute
   '/api/public/v1/sessions/$id/messages': typeof ApiPublicV1SessionsIdMessagesRoute
+  '/api/public/v1/account/setups/$id/remove': typeof ApiPublicV1AccountSetupsIdRemoveRoute
+  '/api/public/v1/account/setups/$id/restore': typeof ApiPublicV1AccountSetupsIdRestoreRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/api/public/v1/account'
     | '/api/public/v1/connections'
+    | '/api/public/v1/account/callback'
+    | '/api/public/v1/account/login'
+    | '/api/public/v1/account/logout'
+    | '/api/public/v1/account/setups'
     | '/api/public/v1/connections/$id/revoke'
     | '/api/public/v1/connections/$id/sessions'
     | '/api/public/v1/connections/$id/usage'
     | '/api/public/v1/connections/$id/verify'
     | '/api/public/v1/sessions/$id/events'
     | '/api/public/v1/sessions/$id/messages'
+    | '/api/public/v1/account/setups/$id/remove'
+    | '/api/public/v1/account/setups/$id/restore'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/api/public/v1/account'
     | '/api/public/v1/connections'
+    | '/api/public/v1/account/callback'
+    | '/api/public/v1/account/login'
+    | '/api/public/v1/account/logout'
+    | '/api/public/v1/account/setups'
     | '/api/public/v1/connections/$id/revoke'
     | '/api/public/v1/connections/$id/sessions'
     | '/api/public/v1/connections/$id/usage'
     | '/api/public/v1/connections/$id/verify'
     | '/api/public/v1/sessions/$id/events'
     | '/api/public/v1/sessions/$id/messages'
+    | '/api/public/v1/account/setups/$id/remove'
+    | '/api/public/v1/account/setups/$id/restore'
   id:
     | '__root__'
     | '/'
+    | '/api/public/v1/account'
     | '/api/public/v1/connections'
+    | '/api/public/v1/account/callback'
+    | '/api/public/v1/account/login'
+    | '/api/public/v1/account/logout'
+    | '/api/public/v1/account/setups'
     | '/api/public/v1/connections/$id/revoke'
     | '/api/public/v1/connections/$id/sessions'
     | '/api/public/v1/connections/$id/usage'
     | '/api/public/v1/connections/$id/verify'
     | '/api/public/v1/sessions/$id/events'
     | '/api/public/v1/sessions/$id/messages'
+    | '/api/public/v1/account/setups/$id/remove'
+    | '/api/public/v1/account/setups/$id/restore'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiPublicV1AccountRoute: typeof ApiPublicV1AccountRouteWithChildren
   ApiPublicV1ConnectionsRoute: typeof ApiPublicV1ConnectionsRouteWithChildren
   ApiPublicV1SessionsIdEventsRoute: typeof ApiPublicV1SessionsIdEventsRoute
   ApiPublicV1SessionsIdMessagesRoute: typeof ApiPublicV1SessionsIdMessagesRoute
@@ -145,12 +235,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/account': {
+      id: '/api/public/v1/account'
+      path: '/api/public/v1/account'
+      fullPath: '/api/public/v1/account'
+      preLoaderRoute: typeof ApiPublicV1AccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/v1/connections': {
       id: '/api/public/v1/connections'
       path: '/api/public/v1/connections'
       fullPath: '/api/public/v1/connections'
       preLoaderRoute: typeof ApiPublicV1ConnectionsRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/account/callback': {
+      id: '/api/public/v1/account/callback'
+      path: '/callback'
+      fullPath: '/api/public/v1/account/callback'
+      preLoaderRoute: typeof ApiPublicV1AccountCallbackRouteImport
+      parentRoute: typeof ApiPublicV1AccountRoute
+    }
+    '/api/public/v1/account/login': {
+      id: '/api/public/v1/account/login'
+      path: '/login'
+      fullPath: '/api/public/v1/account/login'
+      preLoaderRoute: typeof ApiPublicV1AccountLoginRouteImport
+      parentRoute: typeof ApiPublicV1AccountRoute
+    }
+    '/api/public/v1/account/logout': {
+      id: '/api/public/v1/account/logout'
+      path: '/logout'
+      fullPath: '/api/public/v1/account/logout'
+      preLoaderRoute: typeof ApiPublicV1AccountLogoutRouteImport
+      parentRoute: typeof ApiPublicV1AccountRoute
+    }
+    '/api/public/v1/account/setups': {
+      id: '/api/public/v1/account/setups'
+      path: '/setups'
+      fullPath: '/api/public/v1/account/setups'
+      preLoaderRoute: typeof ApiPublicV1AccountSetupsRouteImport
+      parentRoute: typeof ApiPublicV1AccountRoute
     }
     '/api/public/v1/connections/$id/revoke': {
       id: '/api/public/v1/connections/$id/revoke'
@@ -194,8 +319,57 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicV1SessionsIdMessagesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/account/setups/$id/remove': {
+      id: '/api/public/v1/account/setups/$id/remove'
+      path: '/$id/remove'
+      fullPath: '/api/public/v1/account/setups/$id/remove'
+      preLoaderRoute: typeof ApiPublicV1AccountSetupsIdRemoveRouteImport
+      parentRoute: typeof ApiPublicV1AccountSetupsRoute
+    }
+    '/api/public/v1/account/setups/$id/restore': {
+      id: '/api/public/v1/account/setups/$id/restore'
+      path: '/$id/restore'
+      fullPath: '/api/public/v1/account/setups/$id/restore'
+      preLoaderRoute: typeof ApiPublicV1AccountSetupsIdRestoreRouteImport
+      parentRoute: typeof ApiPublicV1AccountSetupsRoute
+    }
   }
 }
+
+interface ApiPublicV1AccountSetupsRouteChildren {
+  ApiPublicV1AccountSetupsIdRemoveRoute: typeof ApiPublicV1AccountSetupsIdRemoveRoute
+  ApiPublicV1AccountSetupsIdRestoreRoute: typeof ApiPublicV1AccountSetupsIdRestoreRoute
+}
+
+const ApiPublicV1AccountSetupsRouteChildren: ApiPublicV1AccountSetupsRouteChildren =
+  {
+    ApiPublicV1AccountSetupsIdRemoveRoute:
+      ApiPublicV1AccountSetupsIdRemoveRoute,
+    ApiPublicV1AccountSetupsIdRestoreRoute:
+      ApiPublicV1AccountSetupsIdRestoreRoute,
+  }
+
+const ApiPublicV1AccountSetupsRouteWithChildren =
+  ApiPublicV1AccountSetupsRoute._addFileChildren(
+    ApiPublicV1AccountSetupsRouteChildren,
+  )
+
+interface ApiPublicV1AccountRouteChildren {
+  ApiPublicV1AccountCallbackRoute: typeof ApiPublicV1AccountCallbackRoute
+  ApiPublicV1AccountLoginRoute: typeof ApiPublicV1AccountLoginRoute
+  ApiPublicV1AccountLogoutRoute: typeof ApiPublicV1AccountLogoutRoute
+  ApiPublicV1AccountSetupsRoute: typeof ApiPublicV1AccountSetupsRouteWithChildren
+}
+
+const ApiPublicV1AccountRouteChildren: ApiPublicV1AccountRouteChildren = {
+  ApiPublicV1AccountCallbackRoute: ApiPublicV1AccountCallbackRoute,
+  ApiPublicV1AccountLoginRoute: ApiPublicV1AccountLoginRoute,
+  ApiPublicV1AccountLogoutRoute: ApiPublicV1AccountLogoutRoute,
+  ApiPublicV1AccountSetupsRoute: ApiPublicV1AccountSetupsRouteWithChildren,
+}
+
+const ApiPublicV1AccountRouteWithChildren =
+  ApiPublicV1AccountRoute._addFileChildren(ApiPublicV1AccountRouteChildren)
 
 interface ApiPublicV1ConnectionsRouteChildren {
   ApiPublicV1ConnectionsIdRevokeRoute: typeof ApiPublicV1ConnectionsIdRevokeRoute
@@ -220,6 +394,7 @@ const ApiPublicV1ConnectionsRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiPublicV1AccountRoute: ApiPublicV1AccountRouteWithChildren,
   ApiPublicV1ConnectionsRoute: ApiPublicV1ConnectionsRouteWithChildren,
   ApiPublicV1SessionsIdEventsRoute: ApiPublicV1SessionsIdEventsRoute,
   ApiPublicV1SessionsIdMessagesRoute: ApiPublicV1SessionsIdMessagesRoute,
