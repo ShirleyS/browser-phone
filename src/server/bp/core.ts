@@ -3,7 +3,7 @@
 import { assertPublicWebhook, type Resolver } from "@/lib/shared/net";
 import { boundedText, BodyLimitError } from '@/lib/shared/body';
 import { pinnedOutbound } from './outbound';
-import { fetchThroughPinnedRelay, getRelayCapability } from './pinned-relay';
+import { fetchThroughPinnedRelay, getRelayCapability, relayDiagnostic } from './pinned-relay';
 
 export function getConfig() {
   const n = (k: string, d: number) => {
@@ -20,7 +20,7 @@ export function getConfig() {
     webhookTimeoutMs: n("BP_WEBHOOK_TIMEOUT_MS", 8000),
     maxBodyBytes: Math.min(n("BP_MAX_BODY_BYTES", 16384), 16384),
     publicOnlyEgress: process.env['BP_PUBLIC_ONLY_EGRESS'] === 'enforced',
-    pinnedRelayOrigin: process.env['BP_PINNED_RELAY_ORIGIN'] ?? (process.env['NODE_ENV'] === 'production' ? 'https://ring-orden-api-shirleys.netlify.app' : ''),
+    pinnedRelayOrigin: process.env['BP_PINNED_RELAY_ORIGIN'] ?? 'https://ring-orden-api-shirleys.netlify.app',
     allowInsecureWebhooks: process.env["BP_ALLOW_INSECURE_WEBHOOKS"] === "true",
     dnsResolverUrl: process.env["BP_DNS_RESOLVER_URL"] || "https://cloudflare-dns.com/dns-query",
     publicBaseUrl: process.env["BP_PUBLIC_BASE_URL"] || "",
@@ -31,7 +31,7 @@ export type BpConfig = ReturnType<typeof getConfig>;
 export async function liveCapability(cfg = getConfig()) {
   const pinned = pinnedOutbound();
   const relay=!pinned&&!cfg.publicOnlyEgress&&cfg.pinnedRelayOrigin?await getRelayCapability(cfg.pinnedRelayOrigin):null;
-  return { enabled: !!pinned || cfg.publicOnlyEgress || !!relay, transport: pinned ? 'node-pinned' : cfg.publicOnlyEgress ? 'enforced-egress' : relay?'node-pinned-relay':'disabled', prerequisite: 'Verified public-only egress, checked-address-pinned Node startup, or a verified pinned relay' };
+  return { enabled: !!pinned || cfg.publicOnlyEgress || !!relay, transport: pinned ? 'node-pinned' : cfg.publicOnlyEgress ? 'enforced-egress' : relay?'node-pinned-relay':'disabled', relay_check: cfg.pinnedRelayOrigin ? relayDiagnostic() : {stage:'not_configured'}, prerequisite: 'Verified public-only egress, checked-address-pinned Node startup, or a verified pinned relay' };
 }
 export function webhookResolver(cfg: BpConfig): Resolver { return pinnedOutbound()?.resolve ?? dohResolver(cfg); }
 
