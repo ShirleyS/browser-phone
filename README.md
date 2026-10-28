@@ -8,6 +8,7 @@ No sign-up required. Optional MojoAuth login lets you save setups. MIT licensed.
 - **Scenarios**: incoming call/message, delayed reply, disconnect, failed delivery, receipt and payment links (all simulated, pointing to example.com).
 - **Live mode**: register a public HTTPS webhook, prove you own it with a one-time pairing code, then events go to your app and your replies show up on the phone.
 - **Bring-your-own voice (ElevenLabs)**: your webhook returns a short-lived signed URL (or you enter a public agent ID). Audio goes straight from the browser to ElevenLabs. Browser Phone never sees your API key.
+- **Shared test phone**: send a phone-only test link using your existing paired integration. Choose1,3,5 or a custom total call allowance plus expiry; forwarded links share the allowance. No signup or owner credentials exposed. See [docs/SHARING.md](./docs/SHARING.md).
 - **Inspector**: shows every request (redacted), the status, how long it took, and any errors. It never reports success when something failed.
 - **Export/Import + Replay**: sanitized JSON. Replays run in the offline engine and never make outside calls.
 - **Embed**: `?embed=1&parent_origin=…&session=…`, controlled by a postMessage protocol that checks the parent origin and session.

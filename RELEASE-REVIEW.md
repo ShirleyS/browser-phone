@@ -77,3 +77,12 @@ Independent whole-change review found one signout lifecycle defect; fixed with t
 ### ElevenLabs signed-URL compatibility follow-up
 
 The current official authentication guide uses `conversation_signature` in signed WebSocket URLs. The shared client/server validator now accepts that parameter or legacy `token`, while retaining the exact provider host/path restriction and exactly two unique query keys. Ambiguous URLs containing both credentials are rejected. Added failing-then-passing current-format coverage and ambiguity rejection; final suite126passed14managed-DBskipped and TypeScript passed. Real ElevenLabs audio still requires a configured agent/webhook and an end-to-end test. Reference: https://elevenlabs.io/docs/eleven-agents/customization/authentication .
+
+
+## Shared test phones with call allowances — 2026-10-28
+
+Added owner-created, no-signup test links using the owner's verified webhook/provider. The owner selects 1, 3, 5 or a custom 1–100 total call attempts and an expiry; forwarded links share that allowance. Opening a link spends no calls. Existing daily, concurrency and duration limits remain enforced. Each tester has isolated sessions and no owner controls or credentials. Revocation atomically ends attached sessions and releases capacity.
+
+Verification:169 tests passed,14 existing managed-database tests skipped. The43 new sharing tests cover real PGlite migration execution and role denials, last-slot reservation/idempotency/cross-kind/expiry/revocation, capability scoping and private inboxes, canonical call-start replay, owner browser-storage isolation, link controls and stale responses. Independent whole-change review found no Critical/Important issues. Shared call failure ends with an error rather than simulated success.
+
+Deployment boundaries: apply migration0006 to the isolated Browser Phone database and publish on HTTPS with supported outbound delivery. No live database/provider audio test or Lovable publication is claimed. The allowance limits Browser Phone call starts; previously issued provider credentials remain subject to provider-side controls. See docs/SHARING.md.

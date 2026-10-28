@@ -308,26 +308,27 @@ export class PhoneEngine {
 
   private async connectLiveCall() {
     const gen = this.generation; const callGen = ++this.callGeneration;
+    const voiceError = (kind: 'micDenied' | 'voiceFailed' | 'noVoice') => this.state.connection?.shareId ? this.tr.sharedVoice[kind] : this.tr[kind];
     const current = () => gen === this.generation && callGen === this.callGeneration && !this.state.replaying && this.state.mode === 'live';
     this.dispatchCall({ type: "connecting", live: true });
     let voice: VoiceConfig | null = null;
     if (this.state.connection?.verified) {
       const s = await this.ensureSession("call");
       if (!current()) return;
-      if (!s) return this.fallbackSimulated(this.tr.quota);
+      if (!s) return this.fallbackSimulated(this.state.connection?.shareId ? (this.state.banner ?? this.tr.quota) : this.tr.quota);
       this.callSession = s;
       const expiry = Math.min(Date.parse(s.expiresAt), s.callDeadline ? Date.parse(s.callDeadline) : Infinity);
       this.later(() => { if (current() && this.callSession === s) void this.hangup('call_deadline'); }, Math.max(0, expiry - this.deps.now()), this.callDeadlines);
       const r = await this.api("call.start", "POST", `/sessions/${s.id}/events`, s.phoneToken, { id: `ev-${this.deps.uuid()}`, type: "call.start" });
       if (!current()) return;
       const b = r.body as { delivery?: { ok: boolean; error?: string }; voice?: VoiceConfig; contract_error?: string } | null;
-      if (!r.ok || !b?.delivery?.ok) return this.fallbackSimulated(`${this.tr.voiceFailed} (${b?.delivery?.error ?? r.error ?? r.status})`);
+      if (!r.ok || !b?.delivery?.ok) return this.fallbackSimulated(`${voiceError('voiceFailed')} (${b?.delivery?.error ?? r.error ?? r.status})`);
       voice = b.voice ?? null;
-      if (!voice && b.contract_error) return this.fallbackSimulated(`${this.tr.noVoice} (${b.contract_error})`);
+      if (!voice && b.contract_error) return this.fallbackSimulated(`${voiceError('noVoice')} (${b.contract_error})`);
       this.startPolling();
     }
     if (!voice && this.state.agentId) voice = { provider: "elevenlabs", agent_id: this.state.agentId };
-    if (!voice) return this.fallbackSimulated(this.tr.noVoice);
+    if (!voice) return this.fallbackSimulated(voiceError('noVoice'));
     if (!validVoiceConfig(voice)) return this.fallbackSimulated('Invalid voice configuration');
     if (!current()) return;
     // Public-agent sessions also have a local upper bound. Provider-side limits
@@ -341,7 +342,7 @@ export class PhoneEngine {
       this.res.stream = stream;
     } catch {
       if (!current()) return;
-      return this.fallbackSimulated(this.tr.micDenied);
+      return this.fallbackSimulated(voiceError('micDenied'));
     }
     if ((this.state.call.status as string) !== "connecting") return void cleanupCall(this.res);
     try {
@@ -349,7 +350,7 @@ export class PhoneEngine {
         onConnected: () => { if (current()) this.dispatchCall({ type: "connected", at: this.deps.now(), live: true, note: this.tr.liveCall }); },
         onDisconnected: (why) => { if (current()) this.invalidateLive(`provider_${why}`); },
         onTranscript: (role, text) => { if (current()) this.push({ id: `tx-${this.deps.uuid()}`, from: role === "agent" ? "them" : "me", kind: "transcript", text, at: this.deps.now(), simulated: false }); },
-        onError: (m) => { if (current()) this.set({ banner: `${this.tr.voiceFailed} ${m}` }); },
+        onError: (m) => { if (current()) this.set({ banner: `${voiceError('voiceFailed')} ${m}` }); },
       });
       const st = this.state.call.status as string;
       if (!current() || st === "idle" || st === "ended") {
@@ -362,11 +363,16 @@ export class PhoneEngine {
       this.res.stream = null;
     } catch (e) {
       if (!current()) return;
-      return this.fallbackSimulated(`${this.tr.voiceFailed} ${(e as Error)?.message ?? ""}`.trim());
+      return this.fallbackSimulated(`${voiceError('voiceFailed')} ${(e as Error)?.message ?? ""}`.trim());
     }
   }
 
   private fallbackSimulated(note: string) {
+    if (this.state.connection?.shareId) {
+      this.set({ banner: note });
+      void this.hangup('call_failed');
+      return;
+    }
     void cleanupCall(this.res);
     if (this.state.call.status === "idle" || this.state.call.status === "ended") return;
     this.dispatchCall({ type: "connected", at: this.deps.now(), live: false, note });
@@ -442,16 +448,16 @@ export class PhoneEngine {
   async revoke() {
     const c = this.state.connection;
     this.invalidateLive('revoked');
-    if (c?.connectionId && c.phoneToken) await this.api("connections.revoke", "POST", `/connections/${c.connectionId}/revoke`, c.phoneToken);
+    if (c?.connectionId && c.phoneToken && !c.shareId) await this.api("connections.revoke", "POST", `/connections/${c.connectionId}/revoke`, c.phoneToken);
     this.setConnection(null);
   }
 
   async refreshUsage() {
     const gen = this.generation;
     const c = this.state.connection;
-    if (!c?.connectionId) return;
-    const r = await this.api("connections.usage", "GET", `/connections/${c.connectionId}/usage`, c.phoneToken);
-    if (gen === this.generation && r.ok) this.set({ usage: r.body as Usage });
+    if (!c?.connectionId && !c?.shareId) return;
+    const r = await this.api("connections.usage", "GET", c.shareId ? `/shares/${c.shareId}` : `/connections/${c.connectionId}/usage`, c.phoneToken);
+    if (gen === this.generation && r.ok) this.set({ usage: c.shareId ? (r.body as { usage: Usage }).usage : r.body as Usage });
   }
 
   private ensureSession(kind: 'chat' | 'call'): Promise<LiveSession | null> {
@@ -472,14 +478,16 @@ export class PhoneEngine {
       return null;
     }
     const key = `idem-${this.deps.uuid()}`;
-    let r = await this.api("sessions.create", "POST", `/connections/${c.connectionId}/sessions`, c.phoneToken, { kind }, { "Idempotency-Key": key });
+    const path = c.shareId ? `/shares/${c.shareId}/sessions` : `/connections/${c.connectionId}/sessions`;
+    let r = await this.api("sessions.create", "POST", path, c.phoneToken, { kind }, { "Idempotency-Key": key });
     if (gen !== this.generation || (kind === 'call' && callGen !== this.callGeneration)) return null;
-    if (r.status === null) r = await this.api("sessions.create (retry)", "POST", `/connections/${c.connectionId}/sessions`, c.phoneToken, { kind }, { "Idempotency-Key": key });
+    if (r.status === null) r = await this.api("sessions.create (retry)", "POST", path, c.phoneToken, { kind }, { "Idempotency-Key": key });
     if (gen !== this.generation || (kind === 'call' && callGen !== this.callGeneration)) return null;
     const b = r.body as { id?: string; phone_token?: string; expires_at?: string; call_deadline?: string | null; error?: { code?: string; message?: string; reset_at?: string } } | null;
     void this.refreshUsage();
     if (!r.ok || !b?.id || !b.phone_token || !b.expires_at) {
       const msg = b?.error?.code === "quota_exceeded" ? `${this.tr.quota} — ${this.tr.resets} ${b.error.reset_at}` : (b?.error?.message ?? r.error ?? "session_failed");
+      if (c.shareId) this.set({ banner: msg });
       this.system(msg);
       return null;
     }
