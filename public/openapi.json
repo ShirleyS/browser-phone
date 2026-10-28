@@ -740,7 +740,7 @@
                           }
                         }
                       ],
-                      "description": "Only documented api.elevenlabs.io conversation WebSocket path is accepted, with agent_id and token query parameters and no credentials/fragments/ports. Opaque WebRTC tokens and unverified regional hosts fail closed. Public agent SDK flows are supported; provider-side limits required."
+                      "description": "Only documented api.elevenlabs.io conversation WebSocket path is accepted, with agent_id and either conversation_signature or legacy token query parameters and no credentials/fragments/ports. Opaque WebRTC tokens and unverified regional hosts fail closed. Public agent SDK flows are supported; provider-side limits required."
                     },
                     "inline_reply_id": {
                       "type": [
