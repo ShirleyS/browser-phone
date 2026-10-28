@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1793210560461,
+      "tag": "0000_browser_phone_core",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793210706293,
+      "tag": "0001_bp_callback_token",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793211141779,
+      "tag": "0002_bp_token_expiry_revocation",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793211245987,
+      "tag": "0003_bp_fix_create_session",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793213032974,
+      "tag": "0004_release_atomic_delivery_inbox_pairing",
+      "breakpoints": true
+    }
+  ]
+}

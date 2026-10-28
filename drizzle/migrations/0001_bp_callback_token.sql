@@ -1,0 +1,1 @@
+ALTER TABLE public.bp_sessions ADD COLUMN callback_token text;

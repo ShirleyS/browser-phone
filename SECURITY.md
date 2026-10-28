@@ -1,0 +1,19 @@
+# Security policy
+
+Please report vulnerabilities privately to the maintainers of your deployment (open a private advisory on the
+repository you got the code from) rather than in a public issue. Include steps to reproduce.
+
+## Design summary
+
+- **No accounts.** Access is through scoped capability tokens (see README "Token scopes"). Connection and phone tokens are hash-only. Callback tokens are recoverable for signaling; signing secrets, webhook URL credentials and successful voice responses are also stored in the service-role-only database. RLS has no end-user read policy. Protect admin access and encrypted backups as secret stores.
+- **Webhook ownership** is proven with a single-use 8-character pairing code. It is sent only to the webhook, expires after 15 minutes and allows 5 attempts. It never appears in API responses or logs. Registering an existing URL creates a new connection and never returns another connection's credentials.
+- **SSRF.** Webhooks must be HTTPS on public addresses. Literal IPs and every DNS A/AAAA answer are checked against private, loopback, link-local, CGNAT, multicast, documentation, NAT64-mapped, 6to4/Teredo and other reserved ranges, again on every delivery. Redirects are never followed. Requests time out (`BP_WEBHOOK_TIMEOUT_MS`).
+  DNS preflight and fetch can use different resolvers; split resolution and rebinding are not fixed by repeating DoH. Independently enforced public-only egress is a deployment prerequisite. Without operator attestation `BP_PUBLIC_ONLY_EGRESS=enforced` **or** the startup-installed pinned Node transport, Live registration/delivery fails closed. The Node transport freezes a checked public address in HTTPS lookup while preserving Host/SNI and TLS certificate hostname validation; no redirects/pooling. The flag does not install enforcement. Cloudflare private-network blocking is not assumed or verified. See README for firewall/proxy/startup requirements.
+- **Signatures.** Each webhook request carries `X-BrowserPhone-Signature: t=<unix>,v1=<hex HMAC-SHA256(secret, t + "." + body)>`.
+- **Limits.** Request bodies are capped (`BP_MAX_BODY_BYTES`). Sessions expire. Concurrent sessions and call duration are capped. Message and event IDs are deduplicated per session.
+- **Browser.** No credentials are stored in localStorage. The connection token lives in sessionStorage for that tab only. The signing secret is never persisted. Exports are redacted.
+- **Embed.** postMessage commands are accepted only from the declared `parent_origin` and the actual parent window, with a matching session nonce. Outgoing messages target that origin, never `*`.
+- **Voice.** The ElevenLabs API key stays on the developer's server. The browser only receives short-lived signed URLs or tokens, or a public agent ID.
+
+- **Delivery semantics.** Leased atomic claims prevent simultaneous duplicate delivery; retryable failures redeliver. Crash recovery is on the next client retry after 30 seconds. Receivers must deduplicate: external exactly-once effects are not possible across timeout/crash boundaries.
+- **Voice boundary.** Exact documented WebSocket host/path is validated before microphone access on client and server. Unverified regional hosts and opaque third-party WebRTC tokens fail closed. Provider-side duration/budget/session-revocation limits are required; hostile browsers can ignore client cleanup/timers.

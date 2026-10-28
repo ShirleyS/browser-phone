@@ -1,0 +1,928 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Browser Phone API",
+    "version": "1.0.0",
+    "license": {
+      "name": "MIT",
+      "identifier": "MIT"
+    },
+    "description": "Base path is /api/public/v1 on the host serving Browser Phone. All tokens are sent as Authorization: Bearer headers, never in query strings. Live webhook registration/delivery requires independently enforced public-only egress attestation or startup-installed Node checked-address pinning; other deployments fail closed. GET /connections reports capability. Requests are streamed with a 16KB cap, webhook responses 64KB."
+  },
+  "servers": [
+    {
+      "url": "/api/public/v1"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "connectionToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "bp_conn_\u2026 \u2014 returned once by POST /connections. Scope: verify, sessions, usage, revoke for one connection. Expires after BP_CONNECTION_TOKEN_TTL_SECONDS (default 7 days)."
+      },
+      "phoneToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "bp_phone_\u2026 \u2014 per session. Scope: post events and read the inbox of that session only."
+      },
+      "callbackToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "bp_cb_\u2026 \u2014 delivered only to the verified webhook inside each event. Scope: post messages into that session only."
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "reset_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/connections": {
+      "post": {
+        "summary": "Register a webhook; sends a pairing code to it",
+        "responses": {
+          "201": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "const": "pending_verification"
+                    },
+                    "api_base": {
+                      "type": "string"
+                    },
+                    "phone_token": {
+                      "type": "string"
+                    },
+                    "phone_token_expires_at": {
+                      "type": "string"
+                    },
+                    "signing_secret": {
+                      "type": "string"
+                    },
+                    "pairing": {
+                      "type": "object",
+                      "properties": {
+                        "delivered": {
+                          "type": "boolean"
+                        },
+                        "status": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "latency_ms": {
+                          "type": "integer"
+                        },
+                        "error": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "expires_at": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "413": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "webhook_url"
+                ],
+                "properties": {
+                  "webhook_url": {
+                    "type": "string",
+                    "format": "uri",
+                    "pattern": "^https://"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Public webhook delivery capability (no private data)",
+        "responses": {
+          "200": {
+            "description": "enabled boolean, transport node-pinned/enforced-egress/disabled, and prerequisite text"
+          }
+        }
+      }
+    },
+    "/connections/{id}/verify": {
+      "post": {
+        "summary": "Prove webhook ownership with the pairing code",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "const": "verified"
+                    },
+                    "verified_at": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "410": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "connectionToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/connections/{id}/sessions": {
+      "post": {
+        "summary": "Create a chat or call session (counts toward daily quota)",
+        "responses": {
+          "201": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "expires_at": {
+                      "type": "string"
+                    },
+                    "call_deadline": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "phone_token": {
+                      "type": "string"
+                    },
+                    "idempotent_replay": {
+                      "type": "boolean"
+                    },
+                    "usage": {
+                      "type": "object",
+                      "properties": {
+                        "used": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "endpoints": {
+                      "type": "object",
+                      "properties": {
+                        "events": {
+                          "type": "string"
+                        },
+                        "messages": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Idempotent replay: same session id, fresh phone token, no quota used"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "connectionToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "chat",
+                      "call"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "429 quota_exceeded includes reset_at and a Retry-After header. 429 too_many_concurrent when active sessions exceed the limit."
+      }
+    },
+    "/connections/{id}/usage": {
+      "get": {
+        "summary": "Today's shared allowance for this webhook",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "connection_id": {
+                      "type": "string"
+                    },
+                    "verified": {
+                      "type": "boolean"
+                    },
+                    "day": {
+                      "type": "string"
+                    },
+                    "used": {
+                      "type": "integer"
+                    },
+                    "limit": {
+                      "type": "integer"
+                    },
+                    "remaining": {
+                      "type": "integer"
+                    },
+                    "reset_at": {
+                      "type": "string"
+                    },
+                    "limits": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "connectionToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/connections/{id}/revoke": {
+      "post": {
+        "summary": "Revoke the connection token and end its sessions",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "const": "revoked"
+                    },
+                    "revoked_at": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "connectionToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/sessions/{id}/events": {
+      "post": {
+        "summary": "Phone \u2192 app event, forwarded (signed) to the webhook",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "event_id": {
+                      "type": "string"
+                    },
+                    "duplicate": {
+                      "type": "boolean"
+                    },
+                    "delivery": {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "boolean"
+                        },
+                        "status": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "latency_ms": {
+                          "type": "integer"
+                        },
+                        "error": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    },
+                    "response_preview": {},
+                    "voice": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "provider",
+                            "transport",
+                            "signed_url"
+                          ],
+                          "properties": {
+                            "provider": {
+                              "const": "elevenlabs"
+                            },
+                            "transport": {
+                              "const": "websocket"
+                            },
+                            "signed_url": {
+                              "type": "string",
+                              "pattern": "^wss://api\\.elevenlabs\\.io/v1/convai/conversation\\?"
+                            }
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "required": [
+                            "provider",
+                            "agent_id"
+                          ],
+                          "properties": {
+                            "provider": {
+                              "const": "elevenlabs"
+                            },
+                            "agent_id": {
+                              "type": "string"
+                            },
+                            "transport": {
+                              "enum": [
+                                "websocket",
+                                "webrtc"
+                              ]
+                            }
+                          }
+                        }
+                      ],
+                      "description": "Only documented api.elevenlabs.io conversation WebSocket path is accepted, with agent_id and token query parameters and no credentials/fragments/ports. Opaque WebRTC tokens and unverified regional hosts fail closed. Public agent SDK flows are supported; provider-side limits required."
+                    },
+                    "inline_reply_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "contract_error": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "event_id": {
+                      "type": "string"
+                    },
+                    "delivery": {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "boolean"
+                        },
+                        "status": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "latency_ms": {
+                          "type": "integer"
+                        },
+                        "error": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "410": {
+            "$ref": "#/components/responses/Error"
+          },
+          "413": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "phoneToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "type"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "type": {
+                    "enum": [
+                      "call.start",
+                      "call.end",
+                      "message.sent"
+                    ]
+                  },
+                  "text": {
+                    "type": "string",
+                    "maxLength": 4000
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "Webhook receives {id,type,created_at,session_id,session_kind,reply_url,callback_token,data} with header X-BrowserPhone-Signature: t=<unix>,v1=<hex HMAC-SHA256(signing_secret, t.body)>. The webhook may respond with {reply:{text,link}} or, for call.start, {voice:{\u2026}}. Atomic delivery states are pending/succeeded/retryable. Same-ID failed requests redeliver; concurrent duplicates return 409 delivery_pending; a 30-second lease permits recovery on retry. Successful response including voice is cached. Receiver deduplication remains mandatory."
+      }
+    },
+    "/sessions/{id}/messages": {
+      "post": {
+        "summary": "App \u2192 phone message",
+        "responses": {
+          "201": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "duplicate": {
+                      "const": false
+                    },
+                    "cursor": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "duplicate": {
+                      "const": true
+                    },
+                    "cursor": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "410": {
+            "$ref": "#/components/responses/Error"
+          },
+          "413": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "callbackToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "type": {
+                    "const": "message"
+                  },
+                  "text": {
+                    "type": "string",
+                    "maxLength": 4000
+                  },
+                  "link": {
+                    "type": "object",
+                    "required": [
+                      "label",
+                      "url"
+                    ],
+                    "properties": {
+                      "label": {
+                        "type": "string",
+                        "maxLength": 80
+                      },
+                      "url": {
+                        "type": "string",
+                        "format": "uri",
+                        "pattern": "^https://"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Phone inbox (cursor polling)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "messages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "type": "string"
+                          },
+                          "text": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "link": {
+                            "type": "object",
+                            "required": [
+                              "label",
+                              "url"
+                            ],
+                            "properties": {
+                              "label": {
+                                "type": "string",
+                                "maxLength": 80
+                              },
+                              "url": {
+                                "type": "string",
+                                "format": "uri",
+                                "pattern": "^https://"
+                              }
+                            }
+                          },
+                          "created_at": {
+                            "type": "string"
+                          },
+                          "cursor": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "next_cursor": {
+                      "type": "string"
+                    },
+                    "session": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string"
+                        },
+                        "expires_at": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "410": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "phoneToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            }
+          }
+        ],
+        "description": "At most 50 rows and 60,000 UTF-8 bytes for the entire JSON envelope. Cursor advances only through included messages; remaining rows are returned on subsequent polls."
+      }
+    }
+  }
+}

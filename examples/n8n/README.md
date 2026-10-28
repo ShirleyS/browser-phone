@@ -1,0 +1,7 @@
+# n8n verified inline echo
+
+Import `workflow.json`. The Webhook must expose **raw binary body** in `binary.data`; verification fails closed if your n8n version provides another shape. Configure `BP_PHONE_ORIGIN` (exact HTTPS origin without trailing slash) and, after bootstrap pairing, `BP_SIGNING_SECRET` in the deployment environment. Allow the Code node builtin `crypto` via `NODE_FUNCTION_ALLOW_BUILTIN=crypto` and explicitly permit environment access for this workflow. Do not share execution records containing credentials; disable successful execution retention and restrict workflow/environment access.
+
+Activate, register the Production HTTPS webhook URL in Browser Phone, copy the display-only `pairing_code` from the verification node's bootstrap execution, verify, then set the signing secret received at registration. Non-pairing events fail unless raw HMAC and the exact callback origin/path/token shape validate. No HTTP Request node exists: replies are inline, with stable IDs, eliminating callback SSRF and redirect risks entirely.
+
+Set a 16 KB body limit on the n8n reverse proxy **before buffering** (for example `client_max_body_size 16k` in nginx); the verification node also checks bytes. Check your n8n release's raw-body output with a signed request. The Code-node logic is tested in `npm test -- src/test/node-example.test.ts`; importing/executing this workflow on a hosted n8n instance still requires deployment verification.
