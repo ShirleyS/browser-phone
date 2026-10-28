@@ -29,7 +29,7 @@ it('integration: delivery uses installed pinned transport with hosted attestatio
   const globals=globalThis as unknown as Record<symbol,unknown>;
   const fetch=vi.fn(async()=>Response.json({reply:{text:'pinned'}}));
   globals[symbol]={resolve:async()=>['8.8.8.8'],fetch};
-  try{const cfg={...getConfig(),publicOnlyEgress:false};expect(liveCapability(cfg)).toMatchObject({enabled:true,transport:'node-pinned'});
+  try{const cfg={...getConfig(),publicOnlyEgress:false};expect(await liveCapability(cfg)).toMatchObject({enabled:true,transport:'node-pinned'});
     expect((await deliverWebhook(cfg,'https://webhook.example.com','fake_test_secret','message.sent',{id:'test'})).ok).toBe(true);expect(fetch).toHaveBeenCalledOnce();
   }finally{delete globals[symbol];}
 });
