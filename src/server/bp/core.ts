@@ -20,7 +20,7 @@ export function getConfig() {
     webhookTimeoutMs: n("BP_WEBHOOK_TIMEOUT_MS", 8000),
     maxBodyBytes: Math.min(n("BP_MAX_BODY_BYTES", 16384), 16384),
     publicOnlyEgress: process.env['BP_PUBLIC_ONLY_EGRESS'] === 'enforced',
-    pinnedRelayOrigin: process.env['BP_PINNED_RELAY_ORIGIN'] || '',
+    pinnedRelayOrigin: process.env['BP_PINNED_RELAY_ORIGIN'] ?? (process.env['NODE_ENV'] === 'production' ? 'https://ring-orden-api-shirleys.netlify.app' : ''),
     allowInsecureWebhooks: process.env["BP_ALLOW_INSECURE_WEBHOOKS"] === "true",
     dnsResolverUrl: process.env["BP_DNS_RESOLVER_URL"] || "https://cloudflare-dns.com/dns-query",
     publicBaseUrl: process.env["BP_PUBLIC_BASE_URL"] || "",
