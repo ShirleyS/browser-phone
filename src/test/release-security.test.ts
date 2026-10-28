@@ -58,9 +58,14 @@ describe('voice destination validation', () => {
     'wss://api.elevenlabs.io:444/v1/convai/conversation?agent_id=agent_123&token=abcdefgh',
     'wss://user:pass@api.elevenlabs.io/v1/convai/conversation?agent_id=agent_123&token=abcdefgh',
     voice.signed_url+'#x', voice.signed_url+'&host=attacker.test',
+    voice.signed_url+'&conversation_signature=abcdefgh',
     'wss://api.elevenlabs.io/other?agent_id=agent_123&token=abcdefgh',
     'wss://api.elevenlabs.io/v1/convai/conversation?agent_id=agent_123&token=x',
   ])('rejects unsafe signed URL %s', signed_url => expect(validVoiceConfig({...voice,signed_url})).toBe(false));
+
+  it('accepts the documented ElevenLabs conversation_signature signed URL',()=>{
+    expect(validVoiceConfig({...voice,signed_url:voice.signed_url.replace('token=','conversation_signature=')})).toBe(true);
+  });
   it('fails closed for opaque WebRTC credentials', () => expect(validVoiceConfig({provider:'elevenlabs',transport:'webrtc',conversation_token:'opaque_destination'})).toBe(false));
   it('rejects attacker config before microphone', async () => {
     const h=harness(); h.fetcher.mockImplementation(async url => String(url).includes('/events') ? Response.json({delivery:{ok:true},voice:{...voice,signed_url:voice.signed_url.replace('api.elevenlabs.io','evil.test')}}) : Response.json({id:'session',phone_token:'x',expires_at:new Date(Date.now()+60000).toISOString()}));

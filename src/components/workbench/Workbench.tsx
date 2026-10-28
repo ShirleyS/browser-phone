@@ -11,6 +11,8 @@ import { buildExport, parseImport } from "@/lib/phone/transfer";
 import { iframeSnippet, newSessionNonce, normalizeOrigin } from "@/lib/phone/embed";
 import type { ScenarioName } from "@/lib/phone/types";
 import { Docs } from "./Docs";
+import { SavedSetups } from './SavedSetups';
+import { ShareTestPhone } from './ShareTestPhone';
 import { cn } from "@/lib/utils";
 
 type P = { engine: PhoneEngine; state: PhoneState };
@@ -152,6 +154,8 @@ function Connect({ engine, state }: P) {
         <p className="mt-2 text-xs text-muted-foreground">{tr.fakeNumber}</p>
       </Section>
 
+      <SavedSetups engine={engine} state={state} />
+      <ShareTestPhone state={state} />
       <EmbedSection state={state} />
     </>
   );

@@ -7,7 +7,7 @@
       "name": "MIT",
       "identifier": "MIT"
     },
-    "description": "Base path is /api/public/v1 on the host serving Browser Phone. All tokens are sent as Authorization: Bearer headers, never in query strings. Live webhook registration/delivery requires independently enforced public-only egress attestation or startup-installed Node checked-address pinning; other deployments fail closed. GET /connections reports capability. Requests are streamed with a 16KB cap, webhook responses 64KB."
+    "description": "Base path is /api/public/v1 on the host serving Browser Phone. Webhook and phone capabilities use Authorization: Bearer headers, never query strings. Optional same-origin account routes use an HttpOnly session cookie and are unavailable until MojoAuth is configured. Live webhook registration/delivery requires independently enforced public-only egress attestation or startup-installed Node checked-address pinning; other deployments fail closed. GET /connections reports capability. Requests are streamed with a 16KB cap, webhook responses 64KB."
   },
   "servers": [
     {
@@ -19,17 +19,28 @@
       "connectionToken": {
         "type": "http",
         "scheme": "bearer",
-        "description": "bp_conn_\u2026 \u2014 returned once by POST /connections. Scope: verify, sessions, usage, revoke for one connection. Expires after BP_CONNECTION_TOKEN_TTL_SECONDS (default 7 days)."
+        "description": "bp_conn_… — returned once by POST /connections. Scope: verify, sessions, usage, revoke for one connection. Expires after BP_CONNECTION_TOKEN_TTL_SECONDS (default 7 days)."
       },
       "phoneToken": {
         "type": "http",
         "scheme": "bearer",
-        "description": "bp_phone_\u2026 \u2014 per session. Scope: post events and read the inbox of that session only."
+        "description": "bp_phone_… — per session. Scope: post events and read the inbox of that session only."
       },
       "callbackToken": {
         "type": "http",
         "scheme": "bearer",
-        "description": "bp_cb_\u2026 \u2014 delivered only to the verified webhook inside each event. Scope: post messages into that session only."
+        "description": "bp_cb_… — delivered only to the verified webhook inside each event. Scope: post messages into that session only."
+      },
+      "accountCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Host-bp_session",
+        "description": "Opaque HttpOnly host-only SameSite=Lax Secure cookie; bp_session on HTTP localhost. Seven-day expiry. Account routes have no cross-origin CORS access. Not an OIDC token."
+      },
+      "shareToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "bp_share_ capability returned once to the verified owner. Only reads this shared phone and creates isolated tester sessions under its lifetime call allowance. Cannot manage owner connections or other inboxes. Hash-only server storage. Expires/revokes with link or connection. URL fragment only for initial link; API token goes in Authorization header."
       }
     },
     "schemas": {
@@ -52,6 +63,321 @@
             }
           }
         }
+      },
+      "SetupSettings": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "contact": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "number": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              }
+            },
+            "required": [
+              "name",
+              "number"
+            ]
+          },
+          "lang": {
+            "enum": [
+              "en",
+              "es"
+            ]
+          },
+          "agentId": {
+            "type": "string",
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "contact",
+          "lang",
+          "agentId"
+        ]
+      },
+      "SavedSetupSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "created_at"
+        ]
+      },
+      "SaveSetup": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "settings": {
+            "$ref": "#/components/schemas/SetupSettings"
+          },
+          "connection": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "token": {
+                    "type": "string",
+                    "pattern": "^bp_conn_[A-Za-z0-9_-]{43}$"
+                  }
+                },
+                "required": [
+                  "id",
+                  "token"
+                ]
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "label",
+          "settings"
+        ]
+      },
+      "RestoredSetup": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/SetupSettings"
+          },
+          "needs_pairing": {
+            "type": "boolean"
+          },
+          "connection": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "apiBase": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "connectionId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "webhookUrl": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "phoneToken": {
+                    "type": "string"
+                  },
+                  "verified": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "apiBase",
+                  "connectionId",
+                  "webhookUrl",
+                  "phoneToken",
+                  "verified"
+                ]
+              }
+            ]
+          }
+        },
+        "required": [
+          "settings",
+          "connection",
+          "needs_pairing"
+        ]
+      },
+      "ShareSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "call_limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "calls_used": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "revoked_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "call_limit",
+          "calls_used",
+          "expires_at",
+          "revoked_at",
+          "created_at"
+        ]
+      },
+      "SharedPhoneSettings": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "contact": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "number": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              }
+            },
+            "required": [
+              "name",
+              "number"
+            ]
+          },
+          "lang": {
+            "enum": [
+              "en",
+              "es"
+            ]
+          }
+        },
+        "required": [
+          "contact",
+          "lang"
+        ]
+      },
+      "CreateShare": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/SharedPhoneSettings"
+          },
+          "call_limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "expires_in_hours": {
+            "type": "integer",
+            "enum": [
+              1,
+              24,
+              168
+            ]
+          }
+        },
+        "required": [
+          "settings",
+          "call_limit",
+          "expires_in_hours"
+        ]
+      },
+      "SharedPhone": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/SharedPhoneSettings"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "usage": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "used": {
+                "type": "integer"
+              },
+              "limit": {
+                "type": "integer"
+              },
+              "remaining": {
+                "type": "integer"
+              },
+              "reset_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "verified": {
+                "const": true
+              }
+            },
+            "required": [
+              "used",
+              "limit",
+              "remaining",
+              "reset_at",
+              "verified"
+            ]
+          }
+        },
+        "required": [
+          "settings",
+          "expires_at",
+          "usage"
+        ]
       }
     },
     "responses": {
@@ -488,7 +814,7 @@
     },
     "/sessions/{id}/events": {
       "post": {
-        "summary": "Phone \u2192 app event, forwarded (signed) to the webhook",
+        "summary": "Phone → app event, forwarded (signed) to the webhook",
         "responses": {
           "200": {
             "description": "OK",
@@ -571,7 +897,7 @@
                           }
                         }
                       ],
-                      "description": "Only documented api.elevenlabs.io conversation WebSocket path is accepted, with agent_id and token query parameters and no credentials/fragments/ports. Opaque WebRTC tokens and unverified regional hosts fail closed. Public agent SDK flows are supported; provider-side limits required."
+                      "description": "Only documented api.elevenlabs.io conversation WebSocket path is accepted, with agent_id and either conversation_signature or legacy token query parameters and no credentials/fragments/ports. Opaque WebRTC tokens and unverified regional hosts fail closed. Public agent SDK flows are supported; provider-side limits required."
                     },
                     "inline_reply_id": {
                       "type": [
@@ -691,12 +1017,12 @@
             }
           }
         },
-        "description": "Webhook receives {id,type,created_at,session_id,session_kind,reply_url,callback_token,data} with header X-BrowserPhone-Signature: t=<unix>,v1=<hex HMAC-SHA256(signing_secret, t.body)>. The webhook may respond with {reply:{text,link}} or, for call.start, {voice:{\u2026}}. Atomic delivery states are pending/succeeded/retryable. Same-ID failed requests redeliver; concurrent duplicates return 409 delivery_pending; a 30-second lease permits recovery on retry. Successful response including voice is cached. Receiver deduplication remains mandatory."
+        "description": "Webhook receives {id,type,created_at,session_id,session_kind,reply_url,callback_token,data} with header X-BrowserPhone-Signature: t=<unix>,v1=<hex HMAC-SHA256(signing_secret, t.body)>. The webhook may respond with {reply:{text,link}} or, for call.start, {voice:{…}}. Atomic delivery states are pending/succeeded/retryable. Same-ID failed requests redeliver; concurrent duplicates return 409 delivery_pending; a 30-second lease permits recovery on retry. Successful response including voice is cached. Receiver deduplication remains mandatory."
       }
     },
     "/sessions/{id}/messages": {
       "post": {
-        "summary": "App \u2192 phone message",
+        "summary": "App → phone message",
         "responses": {
           "201": {
             "description": "OK",
@@ -922,6 +1248,850 @@
           }
         ],
         "description": "At most 50 rows and 60,000 UTF-8 bytes for the entire JSON envelope. Cursor advances only through included messages; remaining rows are returned on subsequent polls."
+      }
+    },
+    "/account": {
+      "get": {
+        "summary": "Check optional account availability and sign-in status",
+        "tags": [
+          "Optional account"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "signed_in": {
+                      "type": "boolean"
+                    },
+                    "reason": {
+                      "enum": [
+                        "not_configured",
+                        "unavailable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "enabled",
+                    "signed_in"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/account/login": {
+      "post": {
+        "summary": "Begin explicit MojoAuth hosted login",
+        "tags": [
+          "Optional account"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Must exactly match configured BP_PUBLIC_BASE_URL origin. Mutations require POST."
+          }
+        ],
+        "description": "Code flow with PKCE, nonce and encrypted ten-minute flow cookie bound to one-time state. Fixed callback; no return URL input.",
+        "responses": {
+          "303": {
+            "description": "Redirect to configured hosted login; sets HttpOnly flow cookie."
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/account/callback": {
+      "get": {
+        "summary": "Complete hosted OIDC login",
+        "tags": [
+          "Optional account"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Provider callback exempt from Origin check; requires cookie-bound one-time state, PKCE, nonce and verified RS256 issuer/audience/expiry. Never accepts a browser-supplied identity.",
+        "responses": {
+          "303": {
+            "description": "Redirect to fixed app origin with setup_login=success or failed; successful callback sets opaque account cookie. Clears flow cookie."
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/account/logout": {
+      "post": {
+        "summary": "Sign out this account session",
+        "tags": [
+          "Optional account"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Must exactly match configured BP_PUBLIC_BASE_URL origin. Mutations require POST."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "signed_in": {
+                      "const": false
+                    }
+                  },
+                  "required": [
+                    "signed_in"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "description": "Idempotent; clears cookie even if already signed out. Does not revoke another device or webhook connection."
+      }
+    },
+    "/account/setups": {
+      "get": {
+        "summary": "List only this account’s saved setup metadata",
+        "tags": [
+          "Optional account"
+        ],
+        "security": [
+          {
+            "accountCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "setups": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SavedSetupSummary"
+                      }
+                    }
+                  },
+                  "required": [
+                    "setups"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Save approved settings and an optional current paired connection",
+        "tags": [
+          "Optional account"
+        ],
+        "security": [
+          {
+            "accountCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Must exactly match configured BP_PUBLIC_BASE_URL origin. Mutations require POST."
+          }
+        ],
+        "responses": {
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedSetupSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "413": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveSetup"
+              }
+            }
+          }
+        },
+        "description": "At most twenty saved setups/account, enforced atomically. Settings/capability encrypted in service-only vault. No conversations, provider API keys, signing secrets or voice URLs. Connection must be paired, unrevoked and unexpired. No quota/expiry extension."
+      }
+    },
+    "/account/setups/{id}/restore": {
+      "post": {
+        "summary": "Explicitly restore an owned saved setup",
+        "tags": [
+          "Optional account"
+        ],
+        "security": [
+          {
+            "accountCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Must exactly match configured BP_PUBLIC_BASE_URL origin. Mutations require POST."
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoredSetup"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "description": "Same-origin only; no CORS. Cache-Control: no-store. Expired/revoked connection returns settings with connection=null and needs_pairing=true. Valid connection capability returned only here, never in listing."
+      }
+    },
+    "/account/setups/{id}/remove": {
+      "post": {
+        "summary": "Remove only an owned saved copy",
+        "tags": [
+          "Optional account"
+        ],
+        "security": [
+          {
+            "accountCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Must exactly match configured BP_PUBLIC_BASE_URL origin. Mutations require POST."
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "removed": {
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "removed"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "description": "Same-origin only; no CORS. Cache-Control: no-store. Does not revoke the active webhook connection."
+      }
+    },
+    "/connections/{id}/shares": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "summary": "List shared test-link metadata for this owned connection",
+        "tags": [
+          "Shared test phones"
+        ],
+        "security": [
+          {
+            "connectionToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "shares": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ShareSummary"
+                      }
+                    }
+                  },
+                  "required": [
+                    "shares"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "410": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a shared test phone with one/few/custom call attempts",
+        "tags": [
+          "Shared test phones"
+        ],
+        "security": [
+          {
+            "connectionToken": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "share": {
+                      "$ref": "#/components/schemas/ShareSummary"
+                    },
+                    "token": {
+                      "type": "string",
+                      "pattern": "^bp_share_[A-Za-z0-9_-]{43}$"
+                    }
+                  },
+                  "required": [
+                    "share",
+                    "token"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "410": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "413": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateShare"
+              }
+            }
+          }
+        },
+        "description": "Verified, current owner capability required. Maximum20 active links/connection. Expiry capped by connection expiry. Token returned only once; listing metadata never contains it. No permanent owner/provider secrets exposed. Call allowance is additional to daily webhook/concurrency/duration quotas. UI presets1,3,5/custom."
+      }
+    },
+    "/connections/{id}/shares/{shareId}/revoke": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "shareId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "summary": "Revoke this test link and deny its subsequent session operations",
+        "tags": [
+          "Shared test phones"
+        ],
+        "security": [
+          {
+            "connectionToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "revoked": {
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "revoked"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "410": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/shares/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Read shared contact and remaining total call allowance without spending a slot",
+        "tags": [
+          "Shared test phones"
+        ],
+        "security": [
+          {
+            "shareToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedPhone"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "410": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/shares/{id}/sessions": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "summary": "Reserve an isolated tester chat or call session",
+        "tags": [
+          "Shared test phones"
+        ],
+        "security": [
+          {
+            "shareToken": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "kind": {
+                      "enum": [
+                        "chat",
+                        "call"
+                      ]
+                    },
+                    "phone_token": {
+                      "type": "string"
+                    },
+                    "expires_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "call_deadline": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "idempotent_replay": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "410": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "kind": {
+                      "enum": [
+                        "chat",
+                        "call"
+                      ]
+                    },
+                    "phone_token": {
+                      "type": "string"
+                    },
+                    "expires_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "call_deadline": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "idempotent_replay": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "413": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9._:-]+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "chat",
+                      "call"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              }
+            }
+          }
+        },
+        "description": "Atomic lifetime call allowance shared by every tester, plus existing fingerprint daily/concurrency quotas through bp_create_session. A new call session counts one attempt, even if subsequent mic/provider setup fails. Opening the page and idempotent retries do not count. Chat does not decrement call allowance. Exhausted call returns429 share_exhausted. Session/credential bounds never exceed link/connection expiry. Kind-changing or ended/expired idempotent replay is rejected. Revoke/expiry denies events/inbox/callbacks. Shared call.start is normalized to one canonical leased event/session. Does not forcibly revoke previously issued provider credentials or guarantee a provider billing cap."
       }
     }
   }

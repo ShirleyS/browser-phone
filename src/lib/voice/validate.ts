@@ -13,9 +13,9 @@ export function validVoiceConfig(value: unknown): value is VoiceConfig {
       return c['transport'] === 'websocket' && c['signed_url'].length <= 4096 &&
         u.protocol === 'wss:' && u.hostname === 'api.elevenlabs.io' && !u.port && !u.username && !u.password && !u.hash &&
         u.pathname === '/v1/convai/conversation' && keys.length === 2 && new Set(keys).size === 2 &&
-        keys.every(k => k === 'agent_id' || k === 'token') &&
+        keys.every(k => k === 'agent_id' || k === 'token' || k === 'conversation_signature') &&
         /^[A-Za-z0-9_-]{4,128}$/.test(u.searchParams.get('agent_id') || '') &&
-        /^[A-Za-z0-9._~-]{8,4096}$/.test(u.searchParams.get('token') || '');
+        /^[A-Za-z0-9._~-]{8,4096}$/.test(u.searchParams.get('conversation_signature') || u.searchParams.get('token') || '');
     } catch { return false; }
   }
   // Opaque third-party WebRTC tokens may embed destinations. Not accepted
