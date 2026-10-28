@@ -20,8 +20,8 @@ const en = {
   allowance: "Today's allowance", resets: "Resets", sessionsLeft: "new sessions left",
   signingSecret: "Signing secret (shown once — copy it to your server)",
   voice: "Voice (bring your own ElevenLabs)", agentId: "Public agent ID (optional)",
-  voiceHelp: "Audio goes straight from this browser to ElevenLabs. Your API key stays on your server. ElevenLabs bills your account.",
-  costs: "Costs: offline demo is free. Live mode uses this backend's shared daily allowance; voice minutes are billed by your provider.",
+  voiceHelp: "Enter a public agent ID only, never an API key. For a private agent, connect your app's webhook; your server returns a temporary signed connection URL. Audio goes directly to ElevenLabs, which bills your account.",
+  costs: "Costs: offline demo is free. Paired webhook sessions use this backend's daily allowance. Direct public-agent calls use your provider's limits; your provider bills voice minutes.",
   scenariosHelp: "Every scenario is simulated locally. Links point to example.com and are labeled.",
   scenario: {
     incoming_call: "Incoming call", incoming_message: "Incoming message", delayed_reply: "Delayed reply (4s)",
@@ -58,8 +58,8 @@ const es: Dict = {
   allowance: "Cupo de hoy", resets: "Se reinicia", sessionsLeft: "sesiones nuevas restantes",
   signingSecret: "Secreto de firma (se muestra una vez — cópialo a tu servidor)",
   voice: "Voz (tu propia cuenta de ElevenLabs)", agentId: "ID público del agente (opcional)",
-  voiceHelp: "El audio va directo de este navegador a ElevenLabs. Tu clave queda en tu servidor. ElevenLabs cobra a tu cuenta.",
-  costs: "Costos: la demo es gratis. El modo en vivo usa un cupo diario compartido; los minutos de voz los cobra tu proveedor.",
+  voiceHelp: "Escribe solo el ID de un agente público, nunca una clave API. Para un agente privado, conecta el webhook de tu app; tu servidor devuelve una URL temporal firmada. El audio va directo a ElevenLabs, que cobra a tu cuenta.",
+  costs: "Costos: la demo es gratis. Las sesiones del webhook usan el cupo diario de este servidor. Las llamadas directas a agentes públicos usan los límites de tu proveedor, que cobra los minutos.",
   scenariosHelp: "Cada escenario es simulado localmente. Los enlaces apuntan a example.com y están marcados.",
   scenario: {
     incoming_call: "Llamada entrante", incoming_message: "Mensaje entrante", delayed_reply: "Respuesta tardía (4s)",

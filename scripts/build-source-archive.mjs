@@ -13,7 +13,7 @@ const OUT = "public/downloads/browser-phone-source.zip";
 
 // Only these paths are ever included (files or directories).
 export const ALLOW = [
-  "src", "public", "drizzle/migrations", "examples", "scripts", "supabase/config.toml",
+  "src", "public", "drizzle/migrations", "examples", "scripts", "docs", "supabase/config.toml",
   "package.json", "package-lock.json", "bun.lock", "bunfig.toml", "tsconfig.json", "vite.config.ts", "vite.node.config.ts", "vitest.config.ts",
   "components.json", "eslint.config.js", ".prettierrc", ".prettierignore", ".gitignore", "drizzle.config.ts",
   "README.md", "LICENSE", "CONTRIBUTING.md", "SECURITY.md", "RELEASE-REVIEW.md", "AGENTS.md", ".env.example",

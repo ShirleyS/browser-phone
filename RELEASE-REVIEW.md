@@ -64,3 +64,12 @@ Fresh checks on the release source: `npm test` completed with **93 passed and 14
 The published source includes the offline phone, voice adapter, server API, migrations, OpenAPI schema, examples, tests, npm lockfile and self-hosting/security/contribution guides. Generated runtime state, installed dependencies and credential files are excluded. The reproducible source download is generated from the reviewed allowlist.
 
 Publishing source does not activate hosted webhooks, provision a database, or prove a real provider audio call. The deployment-specific limitations above remain applicable.
+
+
+## Optional MojoAuth saved setups — 2026-10-28
+
+Optional hosted OIDC sign-in, service-only encrypted setup vault, owner-scoped restore/remove and bilingual collapsed UI. Anonymous phone use remains available. Login stays unavailable without server configuration.
+
+Verification: 124 tests passed, 14 existing managed-database tests skipped; TypeScript and Node production build passed. Account tests exercise actual openid-client protocol validation with RS256 signed-token fixtures, wrong issuer/audience/nonce/expiry/signature/state, cookie/session isolation, exact-origin mutations, encrypted payload tamper/owner binding, revoked/expired capabilities, UI restore cancellation and signout cleanup after collapse/unmount. PGlite executes the account migration and verifies role denials and the atomic twenty-setup cap. Restricted execution denied the existing webhook test server's loopback bind (EPERM); the authorized final run passed all runnable tests.
+
+Independent whole-change review found one signout lifecycle defect; fixed with two failing-then-passing regressions. Final review found no remaining Critical/Important issues. Real MojoAuth email delivery, project callback registration and managed production migration have not been verified or activated. This source update does not publish a Lovable deployment.

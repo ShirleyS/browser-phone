@@ -36,6 +36,13 @@
       "when": 1793213032974,
       "tag": "0004_release_atomic_delivery_inbox_pairing",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793216870434,
+      "tag": "0005_optional_mojoauth_accounts",
+      "breakpoints": true
     }
   ]
 }
