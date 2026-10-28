@@ -43,13 +43,14 @@ export type PhoneState = {
   replaying: boolean;
   view: "chat" | "call";
   banner: string | null;
+  integrationControlled: boolean;
 };
 
 export function initialState(): PhoneState {
   return {
     mode: "offline", lang: "en", contact: { ...DEMO_PRESET }, chat: [], call: initialCall, inspector: [],
     connection: null, usage: null, agentId: "", typing: false, netDown: false, failNext: false,
-    recording: [], isRecording: false, replaying: false, view: "chat", banner: null,
+    recording: [], isRecording: false, replaying: false, view: "chat", banner: null, integrationControlled: false,
   };
 }
 
@@ -135,6 +136,31 @@ export class PhoneEngine {
     this.set({ chat: [], typing: false });
   }
 
+  configureIntegration(contact: Contact, lang: Lang) {
+    this.setConnection(null); this.clearChat(); this.setAgentId(''); this.setContact(contact); this.setLang(lang);
+    this.set({ mode: 'live', integrationControlled: true, banner: null });
+  }
+  integrationCallState(status: 'idle'|'connecting'|'active'|'ended'|'error', message?: string, muted?: boolean) {
+    if (!this.state.integrationControlled) return;
+    if (status === 'connecting' || status === 'active') {
+      if (['idle','ended'].includes(this.state.call.status)) this.dispatchCall({ type: 'dial' });
+      this.dispatchCall({ type: 'connecting', live: true });
+      if (status === 'active') this.dispatchCall({ type: 'connected', live: true, at: this.deps.now(), note: this.tr.liveCall });
+      this.set({ view: 'call', banner: null });
+      if (muted !== undefined) this.set({ call: { ...this.state.call, muted } });
+    } else {
+      this.dispatchCall({ type: 'hangup', reason: status === 'error' ? 'integration_error' : 'hangup' });
+      this.set({ view: 'chat', banner: status === 'error' ? (message || 'The call could not connect.') : null });
+    }
+  }
+  integrationMessage(id: string, text: string, link?: ChatLink) {
+    if (!this.state.integrationControlled) return;
+    this.push({ id, text, ...(link ? { link } : {}), from: 'them', kind: 'message', at: this.deps.now(), simulated: false });
+  }
+  integrationAck(id: string, ok: boolean) {
+    if (this.state.integrationControlled) this.patch(id, { status: ok ? 'sent' : 'failed', error: ok ? undefined : 'integration_delivery_failed' });
+  }
+
   // ---------- chat ----------
   private push(item: ChatItem) {
     if (this.state.chat.some((c) => c.id === item.id)) return;
@@ -156,6 +182,10 @@ export class PhoneEngine {
     else {
       this.record({ type: "send", text: body });
       this.push({ id, from: "me", kind: "message", text: body, at: this.deps.now(), status: "sending", simulated: this.state.mode === "offline" });
+    }
+    if (this.state.integrationControlled && !this.state.replaying) {
+      this.onOutbound?.('message.request', { id, text: body });
+      return;
     }
     if (this.state.mode === "offline" || this.state.replaying) return this.sendOffline(id, body);
     return this.sendLive(id, body);
@@ -249,6 +279,7 @@ export class PhoneEngine {
     this.record({ type: "call", action: "start" });
     this.dispatchCall({ type: "dial" });
     this.set({ view: "call" });
+    if (this.state.integrationControlled) { this.onOutbound?.('call.request', {}); return; }
     if (this.isLiveVoicePossible()) {
       void this.connectLiveCall();
     } else {
@@ -275,10 +306,12 @@ export class PhoneEngine {
 
   toggleMute() {
     this.dispatchCall({ type: "toggleMute" });
+    if (this.state.integrationControlled) this.onOutbound?.('call.mute.request', { muted: this.state.call.muted });
     this.res.voice && (this.res.voice as VoiceSession).setMuted?.(this.state.call.muted);
   }
   toggleSpeaker() {
     this.dispatchCall({ type: "toggleSpeaker" });
+    if (this.state.integrationControlled) this.onOutbound?.('call.volume.request', { volume: this.state.call.speaker ? 1 : 0.6 });
     this.res.voice && (this.res.voice as VoiceSession).setVolume?.(this.state.call.speaker ? 1 : 0.6);
   }
 
@@ -286,6 +319,7 @@ export class PhoneEngine {
     const callGen = ++this.callGeneration;
     this.clearCallDeadlines();
     if (this.state.call.status === "idle" || this.state.call.status === "ended") return;
+    if (this.state.integrationControlled) this.onOutbound?.('call.end.request', {});
     this.record({ type: "call", action: "hangup" });
     const s = this.callSession;
     this.callSession = null;

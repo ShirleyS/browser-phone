@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as IntegrationRouteImport } from './routes/integration'
 import { Route as TestIdRouteImport } from './routes/test.$id'
 import { Route as ApiPublicV1AccountRouteImport } from './routes/api/public/v1/account'
 import { Route as ApiPublicV1ConnectionsRouteImport } from './routes/api/public/v1/connections'
@@ -33,6 +34,11 @@ import { Route as ApiPublicV1ConnectionsIdSharesShareIdRevokeRouteImport } from 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IntegrationRoute = IntegrationRouteImport.update({
+  id: '/integration',
+  path: '/integration',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TestIdRoute = TestIdRouteImport.update({
@@ -147,6 +153,7 @@ const ApiPublicV1ConnectionsIdSharesShareIdRevokeRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/integration': typeof IntegrationRoute
   '/test/$id': typeof TestIdRoute
   '/api/public/v1/account': typeof ApiPublicV1AccountRouteWithChildren
   '/api/public/v1/connections': typeof ApiPublicV1ConnectionsRouteWithChildren
@@ -169,6 +176,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/integration': typeof IntegrationRoute
   '/test/$id': typeof TestIdRoute
   '/api/public/v1/account': typeof ApiPublicV1AccountRouteWithChildren
   '/api/public/v1/connections': typeof ApiPublicV1ConnectionsRouteWithChildren
@@ -192,6 +200,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/integration': typeof IntegrationRoute
   '/test/$id': typeof TestIdRoute
   '/api/public/v1/account': typeof ApiPublicV1AccountRouteWithChildren
   '/api/public/v1/connections': typeof ApiPublicV1ConnectionsRouteWithChildren
@@ -216,6 +225,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/integration'
     | '/test/$id'
     | '/api/public/v1/account'
     | '/api/public/v1/connections'
@@ -238,6 +248,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/integration'
     | '/test/$id'
     | '/api/public/v1/account'
     | '/api/public/v1/connections'
@@ -260,6 +271,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/integration'
     | '/test/$id'
     | '/api/public/v1/account'
     | '/api/public/v1/connections'
@@ -283,6 +295,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  IntegrationRoute: typeof IntegrationRoute
   TestIdRoute: typeof TestIdRoute
   ApiPublicV1AccountRoute: typeof ApiPublicV1AccountRouteWithChildren
   ApiPublicV1ConnectionsRoute: typeof ApiPublicV1ConnectionsRouteWithChildren
@@ -298,6 +311,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/integration': {
+      id: '/integration'
+      path: '/integration'
+      fullPath: '/integration'
+      preLoaderRoute: typeof IntegrationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/test/$id': {
@@ -523,6 +543,7 @@ const ApiPublicV1SharesIdRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  IntegrationRoute: IntegrationRoute,
   TestIdRoute: TestIdRoute,
   ApiPublicV1AccountRoute: ApiPublicV1AccountRouteWithChildren,
   ApiPublicV1ConnectionsRoute: ApiPublicV1ConnectionsRouteWithChildren,
