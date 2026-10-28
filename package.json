@@ -17,7 +17,11 @@
     "demo": "vite dev",
     "build:source": "node scripts/build-source-archive.mjs",
     "check:webhook": "node scripts/check-webhook.mjs",
-    "webhook:example": "node examples/node-webhook/server.mjs"
+    "webhook:example": "node examples/node-webhook/server.mjs",
+    "predev": "npm run build:source",
+    "predemo": "npm run build:source",
+    "prebuild": "npm run build:source",
+    "prebuild:node": "npm run build:source"
   },
   "overrides": {
     "rolldown": "1.2.1"
@@ -106,5 +110,14 @@
     "vite": "8.1.5",
     "vitest": "^4.1.10"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "description": "An open-source browser testing phone with offline scenarios, paired webhooks and bring-your-own ElevenLabs voice.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ShirleyS/browser-phone.git"
+  },
+  "homepage": "https://github.com/ShirleyS/browser-phone#readme",
+  "bugs": {
+    "url": "https://github.com/ShirleyS/browser-phone/issues"
+  }
 }

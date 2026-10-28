@@ -21,10 +21,12 @@ npm run demo        # http://localhost:8080 — offline mode needs no env vars
 
 ## Download the source
 
+The demo and build commands automatically regenerate the source download before starting. Run `npm run build:source` to generate it separately.
+
 The running app serves a reproducible source archive at **`/downloads/browser-phone-source.zip`**
 (link in the Docs tab). Rebuild it with `npm run build:source`. It's built from a strict
 allowlist and excludes `.env` files (except `.env.example`), credentials, `.git`, `node_modules`,
-caches, logs and the archive itself. This copy has **not** been published to GitHub by the authors.
+caches, logs and the archive itself. The public MIT-licensed repository is [ShirleyS/browser-phone](https://github.com/ShirleyS/browser-phone). Clone it with `git clone https://github.com/ShirleyS/browser-phone.git`, then run `npm ci` and `npm run demo`. The downloadable ZIP is a source snapshot; it does not contain credentials or installed dependencies.
 
 ## Self-hosting Live mode
 

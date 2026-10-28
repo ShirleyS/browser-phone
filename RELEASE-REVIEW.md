@@ -54,3 +54,13 @@ Source-download path: `/downloads/browser-phone-source.zip` (unpublished preview
 - `npm run build:node` passed; `HOST=127.0.0.1 PORT=5191 npm run start:node` launched the actual production entry. Home returned HTTP 200; GET `/api/public/v1/connections` returned `enabled:true, transport:"node-pinned"` without an egress attestation.
 - Local credential files are excluded by `.gitignore`; only `.env.example` belongs in source. Public hosting's webhook transport remains disabled until independent egress protection is established.
 - A full external paired Node deployment, fresh database migration, hosted n8n import, and real provider audio remain outside this verification.
+
+## Public source release verification — 2026-10-28
+
+Release target: https://github.com/ShirleyS/browser-phone . The original license commit is retained as the parent of the source release.
+
+Fresh checks on the release source: `npm test` completed with **93 passed and 14 database tests skipped** because test database credentials were not supplied; `npx tsc --noEmit` passed; `npm run build:node` passed. Earlier managed-environment database test results above are historical evidence, not a claim that this release reran them.
+
+The published source includes the offline phone, voice adapter, server API, migrations, OpenAPI schema, examples, tests, npm lockfile and self-hosting/security/contribution guides. Generated runtime state, installed dependencies and credential files are excluded. The reproducible source download is generated from the reviewed allowlist.
+
+Publishing source does not activate hosted webhooks, provision a database, or prove a real provider audio call. The deployment-specific limitations above remain applicable.
