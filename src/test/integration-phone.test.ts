@@ -9,3 +9,17 @@ it('rejects unknown call states and unsafe links without changing the conversati
 it('ends on an actual integration error rather than simulating a call',async()=>{const{engine}=fixture();applyIntegrationCommand(engine,{type:'configure',contact:{name:'Ring Orden',number:'fake'},lang:'en'});engine.startCall();applyIntegrationCommand(engine,{type:'call.state',status:'error',message:'Microphone access timed out'});expect(engine.state.call.status).toBe('ended');expect(engine.state.banner).toBe('Microphone access timed out');await engine.dispose();});
 
 it('synchronizes handset mute with the actual parent microphone state',async()=>{const{engine}=fixture();applyIntegrationCommand(engine,{type:'configure',contact:{name:'Ring Orden',number:'fake'},lang:'en'});engine.startCall();applyIntegrationCommand(engine,{type:'call.state',status:'active',muted:false});engine.toggleMute();expect(engine.state.call.muted).toBe(true);applyIntegrationCommand(engine,{type:'call.state',status:'active',muted:false});expect(engine.state.call.muted).toBe(false);await engine.dispose();});
+
+it('configuration retries preserve an active call and delivered receipt history',async()=>{
+ const {engine}=fixture();
+ const config={type:'configure',contact:{name:'Ring Orden',number:'fake'},lang:'en'};
+ applyIntegrationCommand(engine,config);
+ engine.startCall();
+ applyIntegrationCommand(engine,{type:'call.state',status:'active'});
+ applyIntegrationCommand(engine,{type:'message.received',id:'receipt-once',text:'Your confirmed order'});
+ const call=engine.state.call;
+ applyIntegrationCommand(engine,config);
+ expect(engine.state.call).toEqual(call);
+ expect(engine.state.chat).toMatchObject([{id:'receipt-once',text:'Your confirmed order'}]);
+ await engine.dispose();
+});

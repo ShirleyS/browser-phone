@@ -137,6 +137,11 @@ export class PhoneEngine {
   }
 
   configureIntegration(contact: Contact, lang: Lang) {
+    if (this.state.integrationControlled) {
+      this.setContact(contact);
+      this.setLang(lang);
+      return;
+    }
     this.setConnection(null); this.clearChat(); this.setAgentId(''); this.setContact(contact); this.setLang(lang);
     this.set({ mode: 'live', integrationControlled: true, banner: null });
   }
